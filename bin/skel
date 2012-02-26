@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+#/ Usage: skel <template> <project-name>
+#/ Creates a new template project.
+set -e
+
+# show program usage
+if [ $# -lt 2 -o "$1" = "--help" ]
+then
+    grep '^#/' <"$0" |
+    cut -c4-
+    exit 2
+fi
+
+if [ ! -d ~/.skel/$1 ]
+then
+    echo "<$1> template does not exist!"
+    exit 1
+fi
+
+if [ -d $2 ]
+then
+    echo "<$2> dir already exist!"
+    exit 1
+fi
+
+# program code
+cp -Rv ~/.skel/$1 $2

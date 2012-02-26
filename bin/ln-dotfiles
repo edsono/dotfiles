@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# Usage: ln-dotfiles
+# Link files of dotfiles project in homedir
+set -e
+
+if [ "$1" = "--help" ]
+then
+    grep '^#/' <"$0" |
+    cut -c4-
+    exit 2
+fi
+
+# Assume dotfiles will be in ~/code/dotfiles
+cd ~/code/dotfiles >/dev/null 2>&1 || exit 1
+for filename in *
+do [ -f "$filename" -a "$filename" != "README" ] && ln -sf $PWD/$filename $HOME/.$filename
+done
+[ -d $HOME/bin ]   || ln -sf $HOME/code/dotfiles/bin  $HOME/bin
+[ -d $HOME/.skel ] || ln -sf $HOME/code/dotfiles/skel $HOME/.skel

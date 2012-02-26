@@ -1,0 +1,8 @@
+*.swp
+.vim/swap
+.vim/sessions
+.vim/doc/tags
+.vim/.netrwhist
+.DS_Store
+.svn
+*~

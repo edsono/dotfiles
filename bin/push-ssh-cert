@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+#/ Usage: push-ssh-cert
+#/ Push ssh certification to permit passwordless login
+set -e
+
+if [ $# -eq 0 -o "$1" = "--help" ]
+then
+    grep '^#/' <"$0" |
+    cut -c4-
+    exit 2
+fi
+
+# push SSH public key to another box
+[ -f ~/.ssh/id_rsa.pub ] || ssh-keygen -t rsa
+for host in "$@";
+do
+    echo $host
+    ssh $host 'cat >> ~/.ssh/authorized_keys' < ~/.ssh/id_rsa.pub
+done
+

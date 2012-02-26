@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+# Usage: ctags-java
+# Build ruby ctags file in current directory. Requires
+# exuberant ctags to be installed:
+# http://ctags.sourceforge.net/
+set -e
+TAGSFILE=$1
+shift
+ctags -f $TAGSFILE                     \
+    --recurse                          \
+    --extra=+fq                        \
+    --links=yes                        \
+    --tag-relative=yes                 \
+    --totals=yes                       \
+    --language-force=java              \
+    $@
