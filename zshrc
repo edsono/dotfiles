@@ -71,11 +71,15 @@ bindkey -e
 # Convert inputrc to zle
 eval "$(grep '^\"' ~/.inputrc | sed -n 's/^/bindkey /; s/: / /p')" > /dev/null
 
-# zsh has a different from bash for this command
-bindkey "\e[B" history-beginning-search-forward
-bindkey "\e[A" history-beginning-search-backward
-bindkey "\eOA" history-beginning-search-forward
-bindkey "\eOB" history-beginning-search-backward
+# zsh is different from readline for this command
+autoload history-search-end
+zle -N history-beginning-search-backward-end history-search-end
+zle -N history-beginning-search-forward-end history-search-end
+bindkey "\e[B" history-beginning-search-forward-end
+bindkey "\e[A" history-beginning-search-backward-end
+bindkey "\eOA" history-beginning-search-forward-end
+bindkey "\eOB" history-beginning-search-backward-end
+
 
 # Complete in the middle of some text ignoring the suffix
 bindkey "^i" expand-or-complete-prefix
