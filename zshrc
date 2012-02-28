@@ -184,8 +184,28 @@ alias -g DN='>/dev/null'
 # ZSH FUNCTIONS
 # -------------------------------------------------------------------
 
+# popd
 function - {
   [[ $# -eq 0 ]] && popd || builtin - "$@"
+}
+
+# set proxy
+function @ {
+  if [[ $# -eq 0 ]]; then
+    unset all_proxy
+    unset ALL_PROXY
+    unset ftp_proxy
+    unset FTP_PROXY
+    unset http_proxy
+    unset HTTP_PROXY
+  else
+    export all_proxy=$1
+    export ALL_PROXY=$1
+    export ftp_proxy=$1
+    export FTP_PROXY=$1
+    export http_proxy=$1
+    export HTTP_PROXY=$1
+  fi
 }
 
 
