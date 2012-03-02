@@ -283,7 +283,7 @@ prompt_edsono_setup () {
     PS1="$PS1%{$fg[$pc_proxy]%}@%{$reset_color%}"
     PS1="$PS1%{$fg[$pc_host]%}%m%{$reset_color%}:"
     PS1="$PS1%{$fg[$pc_dir]%}%~%{$reset_color%}"
-    PS1="$PS1%{$fg[yellow]%}$(vcprompt -f '[%n:%b%m%u]')%{$reset_color%}"
+    PS1="$PS1%{$fg[yellow]%}$(vcprompt -f '(%n:%b'%{$fg[red]%}'%m%u'%{$fg[yellow]%}')')%{$reset_color%}"
     PS1="$PS1 %(?.%#.%{$fg[red]%}%?!)%{$reset_color%} "
   }
 
