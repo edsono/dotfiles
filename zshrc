@@ -170,6 +170,11 @@ zstyle ':completion:*' ignore-parents parent pwd
 
 zstyle ':completion::approximate*:*' prefix-needed false
 
+# map Esc-I to complete files even when default completer dont want
+zle -C complete-files complete-word _generic
+zstyle ':completion:complete-files:*' completer _files
+bindkey '^[i' complete-files
+
 # -------------------------------------------------------------------
 # ZSH ALIASES
 # -------------------------------------------------------------------
