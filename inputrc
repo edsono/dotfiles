@@ -50,13 +50,9 @@ $endif
 "\e[2~": quoted-insert
 "\e[3~": delete-char
 
-# alt+<- -> mac Term
-"\e\e[C": forward-word
-"\e\e[D": backward-word
-
-# alt+<- -> iTerm2
-"\e[1;9C": forward-word
-"\e[1;9D": backward-word
+# ctrl+<- -> iTerm2
+"\e[1;5C": forward-word
+"\e[1;5D": backward-word
 
 # pageup/pagedown for old history navigation
 "\e[5~": previous-history
