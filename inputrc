@@ -63,13 +63,9 @@ $endif
 "\e[1;5C": forward-word
 "\e[1;5D": backward-word
 
-# pageup/pagedown for old history navigation
+# # pageup/pagedown for old history navigation
 "\e[5~": previous-history
 "\e[6~": next-history
-
-# old pageup/pagedown
-#"\e[5~": beginning-of-history
-#"\e[6~": end-of-history
 
 # By default up/down are bound to previous-history
 # and next-history respectively. The following does the
