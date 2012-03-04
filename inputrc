@@ -1,3 +1,7 @@
+# Include system wide settings which are ignored
+# by default if one has their own .inputrc
+$include /etc/inputrc
+
 # do not make noise
 set bell-style none
 
@@ -75,7 +79,3 @@ $endif
 "\e[A": history-search-backward
 "\eOA": history-search-forward
 "\eOB": history-search-backward
-
-# Include system wide settings which are ignored
-# by default if one has their own .inputrc
-$include /etc/inputrc
