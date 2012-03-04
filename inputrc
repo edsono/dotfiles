@@ -38,6 +38,11 @@ $if bash
   space: magic-space
 $endif
 
+# region support
+"\C-xw": kill-region
+"\C-x\C-w": kill-region
+"\M-w": copy-region-as-kill
+
 # Ensure that arrow keys work as they should
 "\e[C": forward-char
 "\e[D": backward-char
