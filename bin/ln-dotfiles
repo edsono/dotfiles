@@ -16,4 +16,5 @@ for filename in *
 do [ -f "$filename" -a "$filename" != "README" ] && ln -sf $PWD/$filename $HOME/.$filename
 done
 [ -d $HOME/bin ]   || ln -sf $HOME/code/dotfiles/bin  $HOME/bin
+[ -d $HOME/.zsh ]  || ln -sf $HOME/code/dotfiles/zsh  $HOME/.zsh
 [ -d $HOME/.skel ] || ln -sf $HOME/code/dotfiles/skel $HOME/.skel

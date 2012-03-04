@@ -1,0 +1,3 @@
+#compdef skel
+
+compadd $(ls -A $HOME/.skel)
