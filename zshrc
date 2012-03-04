@@ -10,6 +10,9 @@
 # load shared configuration for interactive shell
 [ -r ~/.shrc ] && . ~/.shrc
 
+# add a custom plugins to path
+fpath=($HOME/.zsh $fpath)
+
 # ----------------------------------------------------------------------
 #  ZSH OPTIONS
 # ----------------------------------------------------------------------
@@ -71,7 +74,10 @@ bindkey -e
 # Convert inputrc to zle
 eval "$(grep '^\"' ~/.inputrc | sed -n 's/^/bindkey /; s/: / /p')" > /dev/null
 
-# zsh is different from readline for this command
+# zsh is different from readline for these commands
+bindkey "\e[5~" up-line-or-history
+bindkey "\e[6~" down-line-or-history
+
 autoload history-search-end
 zle -N history-beginning-search-backward-end history-search-end
 zle -N history-beginning-search-forward-end history-search-end
