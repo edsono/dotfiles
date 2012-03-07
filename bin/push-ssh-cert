@@ -14,7 +14,7 @@ fi
 [ -f ~/.ssh/id_rsa.pub ] || ssh-keygen -t rsa
 for host in "$@";
 do
-    echo $host
-    ssh $host 'cat >> ~/.ssh/authorized_keys' < ~/.ssh/id_rsa.pub
+  echo $host
+  ssh $host '[ -d ~/.ssh ] || mkdir ~/.ssh; chmod 700 ~/.ssh; [ -f ~/.ssh/authorized_keys ] || touch ~/.ssh/authorized_keys; chmod 600 ~/.ssh/*; cat >> ~/.ssh/authorized_keys' < ~/.ssh/id_rsa.pub
 done
 
