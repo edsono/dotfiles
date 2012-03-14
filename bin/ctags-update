@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#/ Usage: ctags-update <file>
+#/ Update tags for the filename informed.
+#/ Requires exuberant ctags to be installed:
+set -e
+
+if [ $# -eq 0 -o "$1" = "--help" ]
+then
+  grep '^#/' <"$0" |
+  cut -c4-
+  exit 2
+fi
+
+if [ ! -f tags ]; then
+  echo "tags file must exist to be updated!"
+  exit 1
+fi
+
+if [ ! -f "$1" ]; then
+  echo "$1 must exist to be included on tags file!"
+  exit 1
+fi
+
+# race conditions primitives using atomic file operations on unix
+lock() {
+  while ! ln -s tags tags.lock; do sleep 0.1; done
+}
+
+unlock() {
+  mv tags.lock tags.deleteme && rm -f tags.deleteme
+}
+
+lock && trap unlock INT TERM EXIT
+
+grep -v '[[:blank:]]test/test_flatfile.rb[[:blank:]]' tags > tags.new
+rm tags && mv tags.new tags
+ctags --append=yes $1
+
+unlock && trap - INT TERM EXIT
+
