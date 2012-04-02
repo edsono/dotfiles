@@ -13,7 +13,7 @@
   review = log -p --max-count=1
   a = add
   aa = add --all
-  s = status
+  s = status --short
   h = !git head
   r = !git l -20
   br = branch
