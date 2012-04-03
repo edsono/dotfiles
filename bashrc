@@ -144,6 +144,8 @@ cyan='\033[0;36m'
 lightcyan='\033[1;36m'
 default='\033[0m'
 
+VCPROMPT="vcprompt_$(uname)"
+
 # Function to set prompt_command to.
 function promptcmd () {
   last="$?"
@@ -186,7 +188,7 @@ function promptcmd () {
   PS1="$PS1\[$pc_proxy\]@"
   PS1="$PS1\[$pc_host\]\h\[$default\]:"
   PS1="$PS1\[$pc_dir\]\w"
-  PS1="$PS1\[$yellow\]$(vcprompt -f '[%n:%b%m%u]')\[$default\]"
+  PS1="$PS1\[$yellow\]$($VCPROMPT -f '[%n:%b%m%u]')\[$default\]"
 
   # working directory
   if [ $last -eq 0 ]; then

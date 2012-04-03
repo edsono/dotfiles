@@ -248,6 +248,8 @@ function @ {
 #     Red       == Current user does not have write priviledges
 #     Green     == Current user does have write priviledges
 
+VCPROMPT="vcprompt_$(uname)"
+
 prompt_edsono_setup () {
   setopt noxtrace localoptions
 
@@ -285,11 +287,13 @@ prompt_edsono_setup () {
       pc_dir='red'
     fi
 
+    # TODO Detect vcprompt executable for current system!
+
     PS1="%{$fg[$pc_user]%}%n%{$reset_color%}"
     PS1="$PS1%{$fg[$pc_proxy]%}@%{$reset_color%}"
     PS1="$PS1%{$fg[$pc_host]%}%m%{$reset_color%}:"
     PS1="$PS1%{$fg[$pc_dir]%}%~%{$reset_color%}"
-    PS1="$PS1%{$fg[yellow]%}$(vcprompt -f '(%n:%b'%{$fg[red]%}'%m%u'%{$fg[yellow]%}')')%{$reset_color%}"
+    PS1="$PS1%{$fg[yellow]%}$($VCPROMPT -f '(%n:%b%m%u)')%{$reset_color%}"
     PS1="$PS1 %(?.%#.%{$fg[red]%}%?!)%{$reset_color%} "
   }
 
