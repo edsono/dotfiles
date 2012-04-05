@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-#/ Usage: push-ssh-cert
+#/ Usage: ssh-push
 #/ Push ssh certification to permit passwordless login
 set -e
 
