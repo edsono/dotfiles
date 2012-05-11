@@ -289,12 +289,12 @@ prompt_edsono_setup () {
 
     # TODO Detect vcprompt executable for current system!
 
-    PS1="%{$fg[$pc_user]%}%n%{$reset_color%}"
-    PS1="$PS1%{$fg[$pc_proxy]%}@%{$reset_color%}"
-    PS1="$PS1%{$fg[$pc_host]%}%m%{$reset_color%}:"
-    PS1="$PS1%{$fg[$pc_dir]%}%~%{$reset_color%}"
-    PS1="$PS1%{$fg[yellow]%}$($VCPROMPT -f '(%n:%b%m%u)')%{$reset_color%}"
-    PS1="$PS1 %(?.%#.%{$fg[red]%}%?!)%{$reset_color%} "
+    PS1="%{$fg_bold[$pc_user]%}%n%{$reset_color%}"
+    PS1="$PS1%{$fg_bold[$pc_proxy]%}@%{$reset_color%}"
+    PS1="$PS1%{$fg_bold[$pc_host]%}%m%{$reset_color%}:"
+    PS1="$PS1%{$fg_bold[$pc_dir]%}%~%{$reset_color%}"
+    PS1="$PS1%{$fg_bold[yellow]%}$($VCPROMPT -f '(%n:%b%m%u)')%{$reset_color%}"
+    PS1="$PS1 %(?.%#.%{$fg_bold[red]%}%?!)%{$reset_color%} "
   }
 
   preexec () {
@@ -304,7 +304,7 @@ prompt_edsono_setup () {
     else
       local today=$(date +%A)
       if [ "${DAY}" != "${today}" ]; then
-        echo "\n$fg[yellow]Day changed to $(date '+%A, %d %B %Y').$reset_color\n"
+        echo "\n$fg_bold[yellow]Day changed to $(date '+%A, %d %B %Y').$reset_color\n"
         export DAY=$today
       fi
     fi
