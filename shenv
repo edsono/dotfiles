@@ -26,7 +26,7 @@ PATH="/usr/local/bin:$PATH:/usr/local/sbin:/usr/sbin:/sbin"
 [ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
 export PATH
 
-LSCOLORS="ExFxCxDxBxEGEDABAGACAD"
+LSCOLORS="ExDxCxDxBxEGEDABAGACAD"
 export LSCOLORS
 
 # bring in local system profile
