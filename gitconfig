@@ -17,6 +17,8 @@
   h = !git head
   r = !git l -20
   br = branch
+  mt = mergetool
+  dt = difftool
   df = diff
   dc = diff --cached
   st = stash
@@ -54,7 +56,7 @@
 [difftool]
   prompt = false
 [difftool "default-difftool"]
-  cmd = vim -f '+next' '+execute \"DirDiff\" argv(0) argv(1)' $LOCAL $REMOTE
+  cmd = vim -f -d $LOCAL $REMOTE
 [mergetool "vimdiff3"]
 	cmd = vim -f -d -c \"wincmd J\" \"$MERGED\" \"$LOCAL\" \"$BASE\" \"$REMOTE\"
 [merge]
