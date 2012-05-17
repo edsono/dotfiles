@@ -26,6 +26,7 @@ PATH="/usr/local/bin:$PATH:/usr/local/sbin:/usr/sbin:/sbin"
 [ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
 export PATH
 
+# ls colors
 LSCOLORS="ExDxCxDxBxEGEDABAGACAD"
 export LSCOLORS
 
