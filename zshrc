@@ -274,8 +274,6 @@ prompt_edsono_setup () {
     # host
     if [ -n "$SSH_CLIENT" -o -n "$SSH_TTY" ]; then
       pc_host='cyan'
-    elif [ -z "$DISPLAY" ]; then
-      pc_host='yellow'
     else
       pc_host='green'
     fi
