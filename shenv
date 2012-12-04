@@ -7,7 +7,7 @@
 # setup some basic variables
 : ${HOME:=~}
 : ${LOGNAME:=$(id -un)}
-: ${CDPATH:=.:$HOME/code:$HOME/projects}
+: ${CDPATH:=.:$HOME/PhD:$HOME/code:$HOME/projects}
 export HOME LOGNAME CDPATH
 
 # enable en_US locale w/ utf-8 encodings if not already configured
