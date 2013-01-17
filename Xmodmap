@@ -1,0 +1,10 @@
+! Swap Caps Lock and Escape
+remove Lock = Caps_Lock
+keysym Escape = Caps_Lock
+keysym Caps_Lock = Escape
+add Lock = Caps_Lock
+
+! Remap R-Cmd (Super_R) to Control
+remove Mod4 = Super_R
+add Control = Super_R
+
