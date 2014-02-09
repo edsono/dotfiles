@@ -4,11 +4,8 @@
 # SANE CONFIGURATION
 # ----------------------------------------------------------------------
 
-# setup some basic variables
-: ${HOME:=~}
-: ${LOGNAME:=$(id -un)}
-: ${CDPATH:=.:$HOME/PhD:$HOME/code:$HOME/projects}
-export HOME LOGNAME CDPATH
+umask 0022            # default umask
+ulimit -S -c 0        # disable core dumps
 
 # enable en_US locale w/ utf-8 encodings if not already configured
 : ${LANG:="en_US.UTF-8"}
@@ -17,18 +14,7 @@ export HOME LOGNAME CDPATH
 : ${LC_ALL:="en_US.UTF-8"}
 export LANG LANGUAGE LC_CTYPE LC_ALL
 
-# readline inputrc
-: ${INPUTRC:=~/.inputrc}
-export INPUTRC
-
 # path
 PATH="/usr/local/bin:$PATH:/usr/local/sbin:/usr/sbin:/sbin"
 [ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
 export PATH
-
-# ls colors
-LSCOLORS="ExDxCxDxBxEGEDABAGACAD"
-export LSCOLORS
-
-# bring in local system profile
-[ -r ~/.profile ] && . ~/.profile

@@ -5,13 +5,24 @@
 # ----------------------------------------------------------------------
 
 stty -ixon -ixoff     # disable flow control
-umask 0022            # default umask
-ulimit -S -c 0        # disable core dumps
 unset MAILCHECK       # forget about mail check
 
 # ----------------------------------------------------------------------
 # ENVIRONMENT CONFIGURATION
 # ----------------------------------------------------------------------
+
+# setup some basic variables
+: ${HOME:=~}
+: ${LOGNAME:=$(id -un)}
+: ${CDPATH:=.:$HOME/PhD:$HOME/Code:$HOME/Projects}
+export HOME LOGNAME CDPATH
+
+: ${INPUTRC:=~/.inputrc}
+export INPUTRC
+
+# ls colors
+LSCOLORS="ExDxCxDxBxEGEDABAGACAD"
+export LSCOLORS
 
 # See what we have to work with ...
 [ -n "$(command -v vim)" ] && EDITOR=vim || EDITOR=vi
@@ -60,6 +71,15 @@ alias ...='cd ../..'
 # disk usage with human sizes and minimal depth
 [ "$(uname)" = "Darwin" ] && DU_DEPTH="-d 1" || DU_DEPTH="--max-depth=1"
 alias du1="command du -h $DU_DEPTH"
+
+# find extension
+fx() { find . -name '*.'$* }
+
+# find with name
+fn() { find . -name "*$**" }
+
+# # find files with word
+fw() {find . -name "*.$1" -exec grep -i -H "$2" {} \; }
 
 # ----------------------------------------------------------------------
 # LS CONFIGURATION

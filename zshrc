@@ -4,9 +4,6 @@
 # ZSH ENVIRONMENT
 # ----------------------------------------------------------------------
 
-# load non-interactive environment too
-[ -r ~/.zshenv ] && . ~/.zshenv
-
 # load shared configuration for interactive shell
 [ -r ~/.shrc ] && . ~/.shrc
 
@@ -16,6 +13,10 @@ fpath=($HOME/.zsh $fpath)
 # ----------------------------------------------------------------------
 #  ZSH OPTIONS
 # ----------------------------------------------------------------------
+
+unalias run-help
+autoload run-help
+HELPDIR=/usr/local/share/zsh/helpfiles
 
 autoload -U zmv
 autoload -U colors && colors
@@ -253,6 +254,15 @@ VCPROMPT="vcprompt_$(uname)"
 prompt_edsono_setup () {
   setopt noxtrace localoptions
 
+  ps1_context () {
+    # For any of these bits of context that exist, display them and append
+    # a space.
+    virtualenv=`basename "$VIRTUAL_ENV"`
+    for v in "$debian_chroot" "$virtualenv" "$PS1_CONTEXT"; do
+        echo -n "${v:+$v }"
+    done
+  }
+
   precmd  () {
     # user
     if [ $UID -eq 0 ]; then
@@ -285,9 +295,8 @@ prompt_edsono_setup () {
       pc_dir='red'
     fi
 
-    # TODO Detect vcprompt executable for current system!
-
-    PS1="%{$fg_bold[$pc_user]%}%n%{$reset_color%}"
+    PS1="%{$fg_bold[yellow]%}$(ps1_context)"
+    PS1="$PS1%{$fg_bold[$pc_user]%}%n%{$reset_color%}"
     PS1="$PS1%{$fg_bold[$pc_proxy]%}@%{$reset_color%}"
     PS1="$PS1%{$fg_bold[$pc_host]%}%m%{$reset_color%}:"
     PS1="$PS1%{$fg_bold[$pc_dir]%}%~%{$reset_color%}"
@@ -314,7 +323,17 @@ prompt_edsono_setup () {
 prompt_edsono_setup
 
 # -------------------------------------------------------------------
+# Ruby RVM
+# -------------------------------------------------------------------
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
+PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
+
+# -------------------------------------------------------------------
 # MOTD / FORTUNE
 # -------------------------------------------------------------------
 
 uname -a && uptime
+
+
+### Added by the Heroku Toolbelt
+export PATH="/usr/local/heroku/bin:$PATH"
