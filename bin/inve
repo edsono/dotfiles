@@ -27,7 +27,7 @@ if [ "$PWD" = "/" ]; then
 fi
 
 # Activate
-export VIRTUAL_ENV="$PWD"
+export VIRTUAL_ENV="$PWD/env"
 export PATH="$VIRTUAL_ENV/bin:$PATH"
 [ -f .profile ] && source .profile
 unset PYTHON_HOME
