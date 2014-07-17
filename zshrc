@@ -262,7 +262,7 @@ function @ {
 #     Red       == Current user does not have write priviledges
 #     Green     == Current user does have write priviledges
 
-VCPROMPT="vcprompt_$(uname)"
+VCPROMPT="vcprompt_$(uname)_$(uname -m)"
 
 prompt_edsono_setup () {
   setopt noxtrace localoptions
@@ -336,17 +336,7 @@ prompt_edsono_setup () {
 prompt_edsono_setup
 
 # -------------------------------------------------------------------
-# Ruby RVM
-# -------------------------------------------------------------------
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
-PATH=$PATH:$HOME/.rvm/bin # Add RVM to PATH for scripting
-
-# -------------------------------------------------------------------
 # MOTD / FORTUNE
 # -------------------------------------------------------------------
 
 uname -a && uptime
-
-
-### Added by the Heroku Toolbelt
-export PATH="/usr/local/heroku/bin:$PATH"
