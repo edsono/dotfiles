@@ -14,7 +14,7 @@ fpath=($HOME/.zsh $fpath)
 #  ZSH OPTIONS
 # ----------------------------------------------------------------------
 
-unalias run-help
+unalias run-help &>/dev/null
 autoload run-help
 HELPDIR=/usr/local/share/zsh/helpfiles
 
@@ -72,21 +72,34 @@ setopt extended_history     # Save the time and how long a command ran
 # Emacs style and Meta act like ESC
 bindkey -e
 
-# Convert inputrc to zle
-eval "$(grep '^\"' ~/.inputrc | sed -n 's/^/bindkey /; s/: / /p')" > /dev/null
-
-# zsh is different from readline for these commands
-bindkey "\e[5~" up-line-or-history
-bindkey "\e[6~" down-line-or-history
-
+# zsh key bindings
 autoload history-search-end
 zle -N history-beginning-search-backward-end history-search-end
 zle -N history-beginning-search-forward-end history-search-end
-bindkey "\e[B" history-beginning-search-forward-end
-bindkey "\e[A" history-beginning-search-backward-end
-bindkey "\eOA" history-beginning-search-forward-end
-bindkey "\eOB" history-beginning-search-backward-end
 
+# Ensure that arrow keys work as they should
+[[ -n "${key[Left]}"    ]]  && bindkey  "${key[Left]}"    backward-char
+[[ -n "${key[Right]}"   ]]  && bindkey  "${key[Right]}"   forward-char
+
+# Search through history
+[[ -n "${key[Up]}"      ]]  && bindkey  "${key[Up]}"      history-beginning-search-backward-end
+[[ -n "${key[Down]}"    ]]  && bindkey  "${key[Down]}"    history-beginning-search-forward-end
+
+# pageup/pagedown for old history navigation
+[[ -n "${key[PageUp]}"   ]] && bindkey  "${key[PageUp]}"    up-line-or-history
+[[ -n "${key[PageDown]}" ]] && bindkey  "${key[PageDown]}"  down-line-or-history
+
+# ctrl+<- -> iTerm2
+bindkey "\e[1;5C" forward-word
+bindkey "\e[1;5D" backward-word
+
+# Who doesn't want home and end to work?
+[[ -n "${key[Home]}"    ]]  && bindkey  "${key[Home]}"    beginning-of-line
+[[ -n "${key[End]}"     ]]  && bindkey  "${key[End]}"     end-of-line
+ 
+# insert/delete
+[[ -n "${key[Insert]}"  ]]  && bindkey  "${key[Insert]}"  overwrite-mode
+[[ -n "${key[Delete]}"  ]]  && bindkey  "${key[Delete]}"  delete-char
 
 # Complete in the middle of some text ignoring the suffix
 bindkey "^i" expand-or-complete-prefix
