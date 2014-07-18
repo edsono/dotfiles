@@ -13,9 +13,9 @@
 while [ "$PWD" != "/" ]; do
     # Stop here if this the root of a virtualenv
     if [ \
-        -x env/bin/python \
-        -a -e env/lib/python*/site.py \
-        -a -e env/include/python*/Python.h ]
+        -x venv/bin/python \
+        -a -e venv/lib/python*/site.py \
+        -a -e venv/include/python*/Python.h ]
     then
         break
     fi
@@ -27,8 +27,8 @@ if [ "$PWD" = "/" ]; then
 fi
 
 # Activate
-export VIRTUAL_ENV="$PWD/env"
-export PATH="$VIRTUAL_ENV/bin:$PATH"
+export VIRTUAL_ENV="$PWD"
+export PATH="$VIRTUAL_ENV/venv/bin:$PATH"
 [ -f .profile ] && source .profile
 unset PYTHON_HOME
 exec "${@:-$SHELL}"
