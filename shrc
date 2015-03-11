@@ -72,14 +72,18 @@ alias ...='cd ../..'
 [ "$(uname)" = "Darwin" ] && DU_DEPTH="-d 1" || DU_DEPTH="--max-depth=1"
 alias du1="command du -h $DU_DEPTH"
 
+# django
+alias dm='./manage.py'
+alias dt='DJANGO_SETTINGS_MODULE=core.settings.test ./manage.py test'
+
 # find extension
 fx() { find . -name '*.'$* }
 
 # find with name
 fn() { find . -name "*$**" }
 
-# # find files with word
-fw() {find . -name "*.$1" -exec grep -i -H "$2" {} \; }
+# find files with word
+fw() { find . -name "*.$1" -exec grep -i -H "$2" {} \; }
 
 # ----------------------------------------------------------------------
 # LS CONFIGURATION

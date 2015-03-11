@@ -1,14 +1,91 @@
 #!/bin/zsh
 
 # ----------------------------------------------------------------------
-# ZSH ENVIRONMENT
+# SANE CONFIGURATION
 # ----------------------------------------------------------------------
 
-# load shared configuration for interactive shell
-[ -r ~/.shrc ] && . ~/.shrc
+stty -ixon -ixoff     # disable flow control
+unset MAILCHECK       # forget about mail check
 
-# add a custom plugins to path
-fpath=($HOME/.zsh $fpath)
+# ----------------------------------------------------------------------
+# INTERACTIVE CONFIGURATION
+# ----------------------------------------------------------------------
+
+# setup some basic variables
+: ${CDPATH:=.:$HOME/PhD:$HOME/Code:$HOME/Projects}
+export CDPATH
+
+: ${INPUTRC:=~/.inputrc}
+export INPUTRC
+
+# ls colors
+LSCOLORS="ExDxCxDxBxEGEDABAGACAD"
+export LSCOLORS
+
+# See what we have to work with ...
+[ -n "$(command -v vim)" ] && EDITOR=vim || EDITOR=vi
+export EDITOR
+
+# hg
+[ -n "$(command -v hg)" ] && export HGEDITOR=$EDITOR
+
+# git
+[ -n "$(command -v git)" ] && export GIT_EDITOR=$EDITOR
+
+# pager
+[ -n "$(command -v less)" ] && PAGER="less -FiRSX" || PAGER=more
+MANPAGER="$PAGER"
+export PAGER MANPAGER
+
+# browser
+[ -n "$DISPLAY" ] && BROWSER=chrome || BROWSER=links
+export BROWSER
+
+# Less Colors for Man Pages
+export LESS_TERMCAP_md=$'\E[01;38;5;166m'          # begin bold
+export LESS_TERMCAP_mb=$'\E[01;38;5;136m'          # begin blinking
+export LESS_TERMCAP_us=$'\E[04;38;5;136m'          # begin underline
+export LESS_TERMCAP_so=$'\E[01;38;5;233;48;5;166m' # begin standout-mode - info box
+export LESS_TERMCAP_se=$'\E[0m'                    # end standout-mode
+export LESS_TERMCAP_ue=$'\E[0m'                    # end underline
+export LESS_TERMCAP_me=$'\E[0m'                    # end mode
+
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# hg
+[ -n "$(command -v hg)" ] && alias h='hg'
+
+# git
+[ -n "$(command -v git)" ] && alias g='git'
+
+# disk usage with human sizes and minimal depth
+[ "$(uname)" = "Darwin" ] && DU_DEPTH="-d 1" || DU_DEPTH="--max-depth=1"
+alias du1="command du -h $DU_DEPTH"
+
+# django
+alias dm='./manage.py'
+alias dt='DJANGO_SETTINGS_MODULE=core.settings.test ./manage.py test'
+
+# find extension
+fx() { find . -name '*.'$* }
+
+# find with name
+fn() { find . -name "*$**" }
+
+# find files with word
+fw() { find . -name "*.$1" -exec grep -i -H "$2" {} \; }
+
+# we always pass these to ls(1)
+[ "$(uname)" = "Darwin" ] && LS_COMMON="-hBG" || LS_COMMON="-hB --color=auto"
+
+# setup the main ls alias if we've established common args
+alias ls="command ls $LS_COMMON"
+
+# these use the ls aliases above
+alias l="ls -la"
+alias ll="ls -l"
+alias l.="ls -d .*"
 
 # ----------------------------------------------------------------------
 #  ZSH OPTIONS
@@ -77,6 +154,32 @@ autoload history-search-end
 zle -N history-beginning-search-backward-end history-search-end
 zle -N history-beginning-search-forward-end history-search-end
 
+# if mac...
+if [[ $(uname) -eq "Darwin" ]]; then
+  typeset -A key
+  key[Home]=${terminfo[khome]}
+  key[End]=${terminfo[kend]}
+  key[Insert]=${terminfo[kich1]}
+  key[Delete]=${terminfo[kdch1]}
+  key[Up]=${terminfo[kcuu1]}
+  key[Down]=${terminfo[kcud1]}
+  key[Left]=${terminfo[kcub1]}
+  key[Right]=${terminfo[kcuf1]}
+  key[PageUp]=${terminfo[kpp]}
+  key[PageDown]=${terminfo[knp]}
+
+  # Finally, make sure the terminal is in application mode, when zle is
+  # active. Only then are the values from $terminfo valid.
+  function zle-line-init () {
+      echoti smkx
+  }
+  function zle-line-finish () {
+      echoti rmkx
+  }
+  zle -N zle-line-init
+  zle -N zle-line-finish
+fi
+
 # Ensure that arrow keys work as they should
 [[ -n "${key[Left]}"    ]]  && bindkey  "${key[Left]}"    backward-char
 [[ -n "${key[Right]}"   ]]  && bindkey  "${key[Right]}"   forward-char
@@ -96,7 +199,7 @@ bindkey "\e[1;5D" backward-word
 # Who doesn't want home and end to work?
 [[ -n "${key[Home]}"    ]]  && bindkey  "${key[Home]}"    beginning-of-line
 [[ -n "${key[End]}"     ]]  && bindkey  "${key[End]}"     end-of-line
- 
+
 # insert/delete
 [[ -n "${key[Insert]}"  ]]  && bindkey  "${key[Insert]}"  overwrite-mode
 [[ -n "${key[Delete]}"  ]]  && bindkey  "${key[Delete]}"  delete-char
@@ -227,6 +330,8 @@ function @ {
     unset FTP_PROXY
     unset http_proxy
     unset HTTP_PROXY
+    unset https_proxy
+    unset HTTPS_PROXY
   else
     export all_proxy=$1
     export ALL_PROXY=$1
@@ -234,6 +339,8 @@ function @ {
     export FTP_PROXY=$1
     export http_proxy=$1
     export HTTP_PROXY=$1
+    export https_proxy=$1
+    export HTTPS_PROXY=$1
   fi
 }
 
