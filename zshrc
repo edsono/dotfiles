@@ -12,6 +12,9 @@ unset MAILCHECK       # forget about mail check
 # ----------------------------------------------------------------------
 
 # setup some basic variables
+path=("$HOME/bin" $path)
+export PATH
+
 : ${CDPATH:=.:$HOME/PhD:$HOME/Code:$HOME/Projects}
 export CDPATH
 
