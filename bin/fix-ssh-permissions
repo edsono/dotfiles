@@ -13,6 +13,6 @@ then
 fi
 
 for file in ~/.ssh/*(.)
-  do chmod 400 $file
+  do chmod 600 $file
 done
 
