@@ -10,8 +10,8 @@ then
     exit 2
 fi
 
-# Assume vimfiles will be in ~/code/vimfiles
-cd $HOME/code/vimfiles >/dev/null 2>&1 || exit 1
-ln -sf $HOME/code/vimfiles/vimrc  $HOME/.vimrc
-ln -sf $HOME/code/vimfiles/gvimrc $HOME/.gvimrc
-[ -d $HOME/.vim ] || ln -sf $HOME/code/vimfiles $HOME/.vim
+# Assume vimfiles will be in ~/Code/vimfiles
+cd $HOME/Code/vimfiles >/dev/null 2>&1 || exit 1
+ln -sf $HOME/Code/vimfiles/vimrc  $HOME/.vimrc
+ln -sf $HOME/Code/vimfiles/gvimrc $HOME/.gvimrc
+[ -d $HOME/.vim ] || ln -sf $HOME/Code/vimfiles $HOME/.vim

@@ -10,11 +10,11 @@ then
     exit 2
 fi
 
-# Assume dotfiles will be in ~/code/dotfiles
-cd ~/code/dotfiles >/dev/null 2>&1 || exit 1
+# Assume dotfiles will be in ~/Code/dotfiles
+cd ~/Code/dotfiles >/dev/null 2>&1 || exit 1
 for filename in *
 do [ -f "$filename" -a "$filename" != "README" ] && ln -sf $PWD/$filename $HOME/.$filename
 done
-[ -d $HOME/bin ]   || ln -sf $HOME/code/dotfiles/bin  $HOME/bin
-[ -d $HOME/.zsh ]  || ln -sf $HOME/code/dotfiles/zsh  $HOME/.zsh
-[ -d $HOME/.skel ] || ln -sf $HOME/code/dotfiles/skel $HOME/.skel
+[ -d $HOME/bin ]   || ln -sf $HOME/Code/dotfiles/bin  $HOME/bin
+[ -d $HOME/.zsh ]  || ln -sf $HOME/Code/dotfiles/zsh  $HOME/.zsh
+[ -d $HOME/.skel ] || ln -sf $HOME/Code/dotfiles/skel $HOME/.skel
