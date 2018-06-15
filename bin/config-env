@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Usage: ln-dotfiles
+# Usage: config-env
 # Link files of dotfiles project in homedir
 set -e
 
@@ -11,10 +11,8 @@ then
 fi
 
 # Assume dotfiles will be in ~/Code/dotfiles
-cd ~/Code/dotfiles >/dev/null 2>&1 || exit 1
+cd $HOME/Code/dotfiles >/dev/null 2>&1 || exit 1
 for filename in *
 do [ -f "$filename" -a "$filename" != "README" ] && ln -sf $PWD/$filename $HOME/.$filename
 done
 [ -d $HOME/bin ]   || ln -sf $HOME/Code/dotfiles/bin  $HOME/bin
-[ -d $HOME/.zsh ]  || ln -sf $HOME/Code/dotfiles/zsh  $HOME/.zsh
-[ -d $HOME/.skel ] || ln -sf $HOME/Code/dotfiles/skel $HOME/.skel

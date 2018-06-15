@@ -1,12 +1,18 @@
 [user]
-  name = Edson César
-  email = edsono@gmail.com
+	name = Edson César
+	email = edsono@gmail.com
 [color]
-  status = auto
-  diff = auto
-  branch = auto
+	status = auto
+	diff = auto
+	branch = auto
+	interactive = auto
 [core]
   excludesfile = /Users/edson/.gitignore
+	editor = vim
+	pager = cat
+	autocrlf = input
+	ignorecase = false
+	safecrlf = warn
 [alias]
   unstage = rm --cached
   unstage-all = rm -r --cached .
@@ -46,18 +52,25 @@
 [gc]
   auto = 1
 [push]
-  default = current
+	default = current
 [format]
   pretty=format:%C(yellow)%h%Creset -%C(red)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset
 [help]
   format = web
 [diff]
-  tool = default-difftool
+	tool = vimdiff
 [difftool]
   prompt = false
 [difftool "default-difftool"]
   cmd = vim -f -d $LOCAL $REMOTE
 [mergetool "vimdiff3"]
 	cmd = vim -f -d -c \"wincmd J\" \"$MERGED\" \"$LOCAL\" \"$BASE\" \"$REMOTE\"
+	trustExitCode = false
 [merge]
 	tool = vimdiff3
+[cola]
+	spellcheck = false
+[g2 "panic"]
+	excludes = -e .classpath -e .settings -e *.iml
+[mergetool]
+	keepBackup = false

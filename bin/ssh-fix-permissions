@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 #/ Author: Edson César <edsono@gmail.com>
 #/ Date: 2016 Oct 31
-#/ Usage: fix-ssh-permissions...
+#/ Usage: ssh-fix-permissions...
 #/ Fix file permissions on .ssh directory
 set -e
 

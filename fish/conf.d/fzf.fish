@@ -1,0 +1,1 @@
+/home/edsono/.config/fisherman/fzf/conf.d/fzf.fish
