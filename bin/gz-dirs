@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # create tar.gz archives and remove original dirs
-# usage: gzball [-q] DIR [DIR] ...
+# usage: gz-dirs [-q] DIR [DIR] ...
 
 ECHO="echo"
 
