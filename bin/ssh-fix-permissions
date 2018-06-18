@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 #/ Author: Edson César <edsono@gmail.com>
 #/ Date: 2016 Oct 31
 #/ Usage: ssh-fix-permissions...
@@ -12,7 +12,8 @@ then
     exit 2
 fi
 
-for file in ~/.ssh/*(.)
-  do chmod 600 $file
+for f in ~/.ssh/*
+do
+    chmod 600 $f
 done
 
