@@ -11,8 +11,8 @@ then
 fi
 
 # Assume dotfiles will be in ~/Code/dotfiles
-cd $HOME/Code/dotfiles >/dev/null 2>&1 || exit 1
-for filename in *
-do [ -f "$filename" -a "$filename" != "README" ] && ln -sf $PWD/$filename $HOME/.$filename
+for f in $HOME/Code/dotfiles/*
+do
+  [ -f "$f" -a "$f" != "README" ] && ln -sf $PWD/$f $HOME/.$f
 done
 [ -d $HOME/bin ]   || ln -sf $HOME/Code/dotfiles/bin  $HOME/bin

@@ -12,5 +12,5 @@ fisher install omf/theme-cmorrell.com
 # Copy config file
 mkdir -p $HOME/.config/fish
 mkdir -p $HOME/.config/fish/conf.d
-cp $HOME/Code/dotfiles/fish/config.fish $HOME/.config/fish
-cp $HOME/Code/dotfiles/fish/000-env.fish $HOME/.config/conf.d
+cp $HOME/Code/dotfiles/fish/config.fish $HOME/.config/fish/config.fish
+cp $HOME/Code/dotfiles/fish/000-env.fish $HOME/.config/fish/conf.d/000-env.fish
