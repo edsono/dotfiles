@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 # Usage: config-env
 # Link files of dotfiles project in homedir
 set -e
@@ -13,6 +13,6 @@ fi
 # Assume dotfiles will be in ~/Code/dotfiles
 for f in $HOME/Code/dotfiles/*
 do
-  [ -f "$f" -a "$f" != "README" ] && ln -sf $PWD/$f $HOME/.$f
+  [ -f "$f" -a "$f" != "README" ] && ln -sf $f $HOME/.$(basename $f)
 done
 [ -d $HOME/bin ]   || ln -sf $HOME/Code/dotfiles/bin  $HOME/bin
