@@ -2,14 +2,6 @@
 # Usage: config-fish
 # Configure fish shell.
 
-# Install fisherman
-curl -Lo ~/.config/fish/functions/fisher.fish --create-dirs https://git.io/fisher
-
-# Install plugins
-fisher install z g2 fzf pyenv pipenv
-fisher install omf/theme-cmorrell.com
-
-# Copy config file
 mkdir -p $HOME/.config/fish
 mkdir -p $HOME/.config/fish/conf.d
 cp $HOME/Code/dotfiles/fish/config.fish $HOME/.config/fish/config.fish
