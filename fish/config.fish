@@ -10,6 +10,12 @@ set -gx EDITOR vim
 ### Home/bin
 set --global fish_user_paths $fish_user_paths ~/bin
 
+### PyEnv
+set -gx PYENV_ROOT ~/.pyenv
+set --global fish_user_paths $fish_user_paths ~/.pyenv/shims
+. (pyenv init -|psub)
+
+### Fisher
 if not functions -q fisher
     echo "Installing fisher for the first time..." >&2
     set -q XDG_CONFIG_HOME; or set XDG_CONFIG_HOME ~/.config
