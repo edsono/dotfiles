@@ -9,6 +9,13 @@ set -gx EDITOR vim
 
 ### Home/bin
 set --global fish_user_paths $fish_user_paths ~/bin
+set --global fish_user_paths $fish_user_paths ~/.local/bin
+
+### Oracle
+set --global fish_user_paths $fish_user_paths /opt/oracle/instantclient_12_2
+
+### Postgres.app
+set --global fish_user_paths $fish_user_paths /Applications/Postgres.app/Contents/Versions/latest/bin
 
 ### PyEnv
 set -gx PYENV_ROOT ~/.pyenv
@@ -22,3 +29,7 @@ if not functions -q fisher
     curl https://git.io/fisher --create-dirs -sLo $XDG_CONFIG_HOME/fish/functions/fisher.fish
     fisher
 end
+
+# added by pipsi (https://github.com/mitsuhiko/pipsi)
+set -x PATH /Users/edsono/.local/bin $PATH
+
