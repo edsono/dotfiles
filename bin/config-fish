@@ -4,5 +4,5 @@
 
 mkdir -p $HOME/.config/fish
 mkdir -p $HOME/.config/fish/conf.d
+cp $HOME/Code/dotfiles/fish/fishfile $HOME/.config/fish/fishfile
 cp $HOME/Code/dotfiles/fish/config.fish $HOME/.config/fish/config.fish
-cp $HOME/Code/dotfiles/fish/fishfile $HOME/.config/fish/conf.d/fishfile
