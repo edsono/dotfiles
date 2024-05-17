@@ -1,11 +1,56 @@
 vim.cmd("highlight clear")
 vim.cmd("syntax reset")
-vim.g.colors_name = "melange"
+vim.g.colors_name = "edsono"
 
-local bg = vim.opt.background:get()
-
-package.loaded["edsono/palettes/" .. bg] = nil -- Only needed for development
-local palette = require("edsono/palettes/" .. bg)
+local palette = {
+  a = {
+    bg = "#080808",
+    float = "#011628",
+    sel = "#403A36",
+    ui = "#867462",
+    brown = "#C1A78E",
+    com = "#9e9e9e",
+    fg = "#ECE1D7",
+    red = "#F38BA8",
+    maroon = "#eba0ac",
+    pink = "#f5c2e7",
+    peach = "#fab387",
+    flamingo = "#f2cdcd",
+    rosewater = "#f5e0dc",
+    yellow = "#f9e2af",
+    blue = "#89b4fa",
+    green = "#a6e3a1",
+    teal = "#94e2d5",
+    sky = "#89dceb",
+    sapphire = "#74c7ec",
+    lavender = "#b4befe",
+    mauve = "#cba6f7",
+  },
+  b = {
+    red = "#D47766",
+    yellow = "#EBC06D",
+    green = "#85B695",
+    cyan = "#89B3B6",
+    blue = "#A3A9CE",
+    magenta = "#CF9BC2",
+  },
+  c = {
+    red = "#BD8183",
+    yellow = "#E49B5D",
+    green = "#78997A",
+    cyan = "#7B9695",
+    blue = "#7F91B2",
+    magenta = "#B380B0",
+  },
+  d = {
+    red = "#7D2A2F",
+    yellow = "#8B7449",
+    green = "#233524",
+    cyan = "#253333",
+    blue = "#273142",
+    magenta = "#422741",
+  },
+}
 
 local a = palette.a -- Grays
 local b = palette.b -- Bright foreground colors
@@ -118,19 +163,19 @@ for name, attrs in pairs({
   Comment = { fg = a.com, italic = fv.italic },
   Identifier = { fg = a.fg },
   Function = { fg = b.yellow },
-  Constant = { fg = c.magenta },
+  Constant = { fg = a.mauve },
   String = { fg = b.green },
   Character = { fg = c.blue },
-  Number = { fg = c.blue },
-  Boolean = "Number",
+  Number = { fg = b.blue },
+  Boolean = { fg = a.mauve },
   -- Float = {},
 
   Statement = { fg = c.yellow },
   -- Conditional = {},
   -- Repeat = {},
   -- Label = {},
-  Operator = { fg = b.red },
-  -- Keyword = {},
+  Operator = { fg = a.peach },
+  Keyword = { fg = a.peach },
   -- Exception = {},
 
   PreProc = { fg = b.red },
@@ -168,7 +213,7 @@ for name, attrs in pairs({
   -- ['@character'] = {},
   -- ['@character.special'] = {},
   -- ['@string'] = {},
-  ["@string.documentation"] = { fg = b.blue, nocombine = true },
+  ["@string.documentation"] = { fg = a.com, nocombine = true, italic = fv.italic },
   ["@string.escape"] = { fg = c.blue },
   ["@string.regexp"] = { fg = b.blue },
   ["@string.special"] = { fg = b.cyan },
@@ -205,14 +250,14 @@ for name, attrs in pairs({
   -- ['@variable.member'] = {},
 
   -- ['@type'] = {},
-  -- ['@type.builtin'] = {},
+  ["@type.builtin"] = { fg = a.maroon },
   -- ['@type.definition'] = {},
   ["@type.qualifier"] = "Statement",
   -- ['@attribute'] = {},
   -- ['@property'] = {},
 
   -- ['@function'] = {},
-  -- ['@function.builtin'] = {},
+  ["@function.builtin"] = { fg = a.maroon },
   ["@function.macro"] = "Function",
   -- ['@function.method'] = {},
   -- ['@constructor'] = {},

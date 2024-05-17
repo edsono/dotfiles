@@ -37,3 +37,10 @@ keymap.set("n", "<leader>tp", "<cmd>tabp<CR>", { desc = "Go to previous tab" }) 
 -- Buffer
 keymap.set("n", "]b", "<cmd>:bnext<CR>", { desc = "Swap to next buffer" })
 keymap.set("n", "[b", "<cmd>:bprev<CR>", { desc = "Swap to previous buffer" })
+
+-- Key:         Ctrl-e
+-- Action:      Show treesitter capture group for textobject under cursor.
+keymap.set("n", "<C-e>", function()
+  local result = vim.treesitter.get_captures_at_cursor(0)
+  print(vim.inspect(result))
+end, { noremap = true, silent = false })
