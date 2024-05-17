@@ -118,7 +118,7 @@ export ARCHFLAGS="-arch x86_64"
 # Example aliases
 alias zshrc="nvim ~/.zshrc"
 alias ohmyzsh="nvim ~/.oh-my-zsh"
-alias l="lds"
+alias l="lsd"
 alias ll="lsd -lh"
 alias la="lsd -lha"
 alias cm="chezmoi"
