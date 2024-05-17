@@ -1,8 +1,0 @@
--f tags
---sort=yes
---links=yes
---tag-relative=yes
---extra=+f
---fields=+iaS
---totals=yes
---regex-ruby=/.*alias(_method)?[[:space:]]+:([[:alnum:]_=!?]+),?[[:space:]]+:([[:alnum:]_=!]+)/\\2/f/
