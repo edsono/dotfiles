@@ -84,17 +84,12 @@ setopt HIST_REDUCE_BLANKS    # Remove superfluous blanks from each command line 
 # Would you like to use another custom folder than $ZSH/custom?
 # ZSH_CUSTOM=/path/to/new-custom-folder
 
-# FZF
-export FZF_BASE=/home/linuxbrew/.linuxbrew/Cellar/fzf/0.45.0
-export FZF_DEFAULT_COMMAND='fd --type f'
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
 # Which plugins would you like to load?
 # Standard plugins can be found in $ZSH/plugins/
 # Custom plugins may be added to $ZSH_CUSTOM/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git fzf aliases)
+plugins=(git aliases)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -123,16 +118,72 @@ export ARCHFLAGS="-arch x86_64"
 # Example aliases
 alias zshrc="nvim ~/.zshrc"
 alias ohmyzsh="nvim ~/.oh-my-zsh"
-alias l="eza"
-alias ll="eza -lh"
-alias la="eza -lha"
-alias cat="bat"
+alias l="lds"
+alias ll="lsd -lh"
+alias la="lsd -lha"
 alias cm="chezmoi"
 
-# HomeBrew
+# ---- HomeBrew ----
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-# Zoxide
-eval "$(zoxide init zsh)"
+# ---- FZF -----
+# Set up fzf key bindings and fuzzy completion
+eval "$(fzf --zsh)"
 
+# -- Use fd instead of fzf --
+export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="fd --type=d --hidden --strip-cwd-prefix --exclude .git"
+
+# Use fd (https://github.com/sharkdp/fd) for listing path candidates.
+# - The first argument to the function ($1) is the base path to start traversal
+# - See the source code (completion.{bash,zsh}) for the details.
+_fzf_compgen_path() {
+  fd --hidden --exclude .git . "$1"
+}
+
+# Use fd to generate the list for directory completion
+_fzf_compgen_dir() {
+  fd --type=d --hidden --exclude .git . "$1"
+}
+
+# --- setup fzf theme ---
+fg="#a6adc8"
+bg="#070710"
+bg_highlight="#313244"
+orange="#fab387"
+blue="#89b4fa"
+yellow="#f9e2af"
+
+export FZF_DEFAULT_OPTS="--color=fg:${fg},bg:${bg},hl:${orange},fg+:${fg},bg+:${bg_highlight},hl+:${orange},info:${blue},prompt:${yellow},pointer:${yellow},marker:${yellow},spinner:${yellow},header:${yellow}"
+
+show_file_or_dir_preview="if [ -d {} ]; then lsd --tree --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
+
+export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
+export FZF_ALT_C_OPTS="--preview 'lsd --tree --color=always {} | head -200'"
+
+# Advanced customization of fzf options via _fzf_comprun function
+# - The first argument to the function is the name of the command.
+# - You should make sure to pass the rest of the arguments to fzf.
+_fzf_comprun() {
+  local command=$1
+  shift
+
+  case "$command" in
+    cd)           fzf --preview 'lsd --tree --color=always {} | head -200' "$@" ;;
+    export|unset) fzf --preview "eval 'echo ${}'"         "$@" ;;
+    ssh)          fzf --preview 'dig {}'                   "$@" ;;
+    *)            fzf --preview "$show_file_or_dir_preview" "$@" ;;
+  esac
+}
+
+# ----- Bat (better cat) -----
+export BAT_THEME=Darcula
+alias cat="bat"
+
+# ---- Zoxide (better cd) ----
+eval "$(zoxide init zsh)"
+alias cd="z"
+
+# Broot
 source /home/edsono/.config/broot/launcher/bash/br

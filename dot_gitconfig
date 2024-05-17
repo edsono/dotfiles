@@ -8,8 +8,8 @@
 	interactive = auto
 [core]
   excludesfile = /Users/edson/.gitignore
-	editor = vim
-	pager = cat
+	editor = nvim
+	pager = delta
 	autocrlf = input
 	ignorecase = false
 	safecrlf = warn
@@ -59,18 +59,21 @@
   format = web
 [diff]
 	tool = vimdiff
+  colorMoved = default
 [difftool]
   prompt = false
 [difftool "default-difftool"]
-  cmd = vim -f -d $LOCAL $REMOTE
+  cmd = nvim -f -d $LOCAL $REMOTE
 [mergetool "vimdiff3"]
-	cmd = vim -f -d -c \"wincmd J\" \"$MERGED\" \"$LOCAL\" \"$BASE\" \"$REMOTE\"
+	cmd = nvim -f -d -c \"wincmd J\" \"$MERGED\" \"$LOCAL\" \"$BASE\" \"$REMOTE\"
 	trustExitCode = false
 [merge]
-	tool = vimdiff3
-[cola]
-	spellcheck = false
-[g2 "panic"]
-	excludes = -e .classpath -e .settings -e *.iml
-[mergetool]
-	keepBackup = false
+  conflictstyle = diff3
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+  navigate = true    # use n and N to move between diff sections
+  side-by-side = true
+  # delta detects terminal colors automatically; set one of these to disable auto-detection
+  # dark = true
+  # light = true
