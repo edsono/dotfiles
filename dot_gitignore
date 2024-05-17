@@ -10,7 +10,7 @@
 .vim/doc/tags
 .vim/.netrwhist
 
-# Visual Studio Code
+# VS Code
 .vscode
 
 # Py.test
