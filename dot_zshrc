@@ -184,6 +184,3 @@ alias cat="bat"
 # ---- Zoxide (better cd) ----
 eval "$(zoxide init zsh)"
 alias cd="z"
-
-# Broot
-source /home/edsono/.config/broot/launcher/bash/br
