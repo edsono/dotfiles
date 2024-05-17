@@ -1,5 +1,5 @@
 vim.cmd("let g:netrw_liststyle = 3")
-vim.cmd([[colorscheme darcula]])
+vim.cmd([[colorscheme melange]])
 
 local opt = vim.opt -- for conciseness
 

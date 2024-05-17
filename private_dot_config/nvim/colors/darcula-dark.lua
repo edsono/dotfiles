@@ -26,7 +26,7 @@ M.setup = function(args)
 
 	vim.g.colors_name = "darcula-dark"
 	vim.o.termguicolors = true
-	M.configure_highlights()
+	-- M.configure_highlights()
 end
 
 local color = {
