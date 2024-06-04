@@ -39,6 +39,7 @@ return {
             ["@property"] = { fg = cp.text },
             ["@parameter"] = { fg = cp.text, style = {} },
             ["@variable.builtin"] = { fg = cp.text, style = {} },
+            ["@variable.parameter"] = { fg = cp.yellow, style = {} },
             ["@tag.attribute"] = { link = "Identifier" },
 
             -- Purple like: Mauve, Lavender
@@ -85,19 +86,22 @@ return {
             Include = { link = "Macro" }, --  preprocessor #include
             Define = { link = "Macro" }, -- preprocessor #define
             PreCondit = { link = "Macro" }, -- preprocessor #if, #else, #endif, etc.
+            Special = { fg = cp.maroon }, -- (preferred) any special symbol
+            SpecialChar = { link = "Special" }, -- special character in a constant
+            Debug = { link = "Special" }, -- debugging statements
             ["@constant.builtin"] = { link = "Macro", style = {} },
 
             -- Yellow like: Yellow, Rosewater
             Function = { fg = cp.yellow }, -- function name (also: methods for classes)
             Statement = { fg = cp.yellow }, -- (preferred) any statement
             Delimiter = { fg = cp.rosewater }, -- character that needs attention
-            Special = { fg = cp.yellow }, -- (preferred) any special symbol
-            SpecialChar = { link = "Special" }, -- special character in a constant
-            Debug = { link = "Special" }, -- debugging statements
 
             -- Todo, fixme
             TodoFgTODO = { fg = cp.mauve },
             TodoBgTODO = { bg = cp.mauve },
+
+            -- Bash
+            ["@keyword.import.bash"] = { link = "Keyword" },
 
             -- Lua
             ["@keyword.luadoc"] = { link = "Comment" },
