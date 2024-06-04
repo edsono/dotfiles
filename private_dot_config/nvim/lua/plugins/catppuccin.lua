@@ -104,6 +104,8 @@ return {
 
             -- Bash
             ["@keyword.import.bash"] = { link = "Keyword" },
+            ["@function.call.bash"] = { link = "Text" },
+            ["@function.builtin.bash"] = { link = "Macro" },
 
             -- Lua
             ["@keyword.luadoc"] = { link = "Comment" },
