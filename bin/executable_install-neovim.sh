@@ -11,8 +11,7 @@ sudo dnf module enable nodejs:20
 sudo yum install golang nodejs python@3.12
 
 # Install NeoVim
-brew install lazygit neovim
+brew install lazygit tmux neovim
 
-# Install LazyVim
-git clone https://github.com/LazyVim/starter ~/.config/nvim
-rm -rf ~/.config/nvim/.git
+# Install tmux tpm
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
