@@ -33,25 +33,25 @@ return {
             -- Gray like: Text, Overlay 0, Overlay 1, Overlay 2
             Comment = { fg = cp.overlay0 }, -- just comments
             SpecialComment = { link = "Special" }, -- special things inside a comment
+            Text = { fg = cp.text },
             Identifier = { fg = cp.text }, -- (preferred) any variable name
             ["@field"] = { fg = cp.text },
             ["@variable"] = { fg = cp.text },
             ["@property"] = { fg = cp.text },
             ["@parameter"] = { fg = cp.text, style = {} },
-            ["@variable.builtin"] = { fg = cp.text, style = {} },
-            ["@keyword.luadoc"] = { link = "Comment" },
+            ["@variable.member"] = { fg = cp.text },
+            ["@variable.builtin"] = { fg = cp.text },
+            ["@tag.attribute"] = { link = "Identifier" },
 
             -- Purple like: Mauve, Lavender
-            Boolean = { fg = cp.mauve }, --  a boolean constant: TRUE, false
+            Boolean = { fg = cp.lavender }, --  a boolean constant: TRUE, false
             Constant = { fg = cp.mauve }, -- (preferred) any constant
-            ["@constant.regex"] = { fg = cp.teal },
-            ["@constant.builtin"] = { fg = cp.flamingo, style = {} },
-
 
             -- Green like: Green, Teal
-            Character = { fg = cp.teal }, --  a character constant: 'c', '\n'
             String = { fg = cp.green }, -- a string constant: "this is a string"
+            Character = { fg = cp.teal }, --  a character constant: 'c', '\n'
             ["@string.escape"] = { link = "Character" },
+            ["@constant.regex"] = { link = "Character" },
             ["@operator.regex"] = { link = "Character" },
             ["@punctuation.bracket.regex"] = { link = "Character" },
 
@@ -60,46 +60,62 @@ return {
             Float = { fg = cp.sky }, --    a floating point constant: 2.3e10
 
             -- Orange like: Peach, Flamingo
-            Function = { fg = cp.text }, -- function name (also: methods for classes)
-            Statement = { fg = cp.peach }, -- (preferred) any statement
             Conditional = { fg = cp.peach, style = {} }, --  if, then, else, endif, switch, etc.
             Repeat = { fg = cp.peach }, --   for, do, while, etc.
             Label = { fg = cp.peach }, --    case, default, etc.
             Exception = { fg = cp.peach }, --  try, catch, throw
             Keyword = { fg = cp.peach }, --  any other keyword
-            Operator = { fg = cp.rosewater }, -- "sizeof", "+", "*", etc.
-            ["@namespace"] = { fg = cp.flamingo, style = {} },
-            ["@constructor"] = { fg = cp.flamingo },
+            StorageClass = { fg = cp.peach }, -- static, register, volatile, etc.
+            Structure = { fg = cp.yellow }, --  struct, union, enum, etc.
+            Operator = { fg = cp.flamingo }, -- "sizeof", "+", "*", etc.
+            Type = { fg = cp.flamingo }, -- (preferred) int, long, char, etc.
+            Typedef = { link = "Type" }, --  A typedef
+            ["@type.builtin"] = { link = "Type" },
+            ["@namespace"] = { fg = cp.peach, style = {} },
+            ["@constructor"] = { fg = cp.peach },
             ["@keyword.return"] = { fg = cp.peach },
             ["@keyword.function"] = { fg = cp.peach },
             ["@keyword.operator"] = { fg = cp.peach },
 
+            Tag = { fg = cp.peach, style = {} }, -- you can use CTRL-] on this
+            ["@tag"] = { link = "Tag" },
+            ["@tag.delimiter"] = { link = "Tag" },
+
             -- Red like: Red, Marron, Pink
-            PreProc = { fg = cp.red }, -- (preferred) generic Preprocessor
-            Include = { fg = cp.red }, --  preprocessor #include
-            Define = { link = "PreProc" }, -- preprocessor #define
-            Macro = { fg = cp.red }, -- same as Define
-            PreCondit = { link = "PreProc" }, -- preprocessor #if, #else, #endif, etc.
+            Macro = { fg = cp.maroon }, -- same as Define
+            PreProc = { link = "Macro" }, -- (preferred) generic Preprocessor
+            Include = { link = "Macro" }, --  preprocessor #include
+            Define = { link = "Macro" }, -- preprocessor #define
+            PreCondit = { link = "Macro" }, -- preprocessor #if, #else, #endif, etc.
+            Special = { fg = cp.red }, -- (preferred) any special symbol
+            SpecialChar = { link = "Special" }, -- special character in a constant
+            Debug = { link = "Special" }, -- debugging statements
+            ["@constant.builtin"] = { link = "Macro", style = {} },
 
             -- Yellow like: Yellow, Rosewater
-            StorageClass = { fg = cp.rosewater }, -- static, register, volatile, etc.
-            Structure = { fg = cp.yellow }, --  struct, union, enum, etc.
-            Special = { fg = cp.yellow }, -- (preferred) any special symbol
-            Type = { fg = cp.rosewater }, -- (preferred) int, long, char, etc.
-            Typedef = { link = "Type" }, --  A typedef
-            ["@type.builtin"] = { link = "Type" },
-
-            SpecialChar = { link = "Special" }, -- special character in a constant
-            Tag = { fg = cp.lavender, style = { "bold" } }, -- you can use CTRL-] on this
-            Delimiter = { fg = cp.overlay2 }, -- character that needs attention
-            Debug = { link = "Special" }, -- debugging statements
+            Function = { fg = cp.yellow }, -- function name (also: methods for classes)
+            Statement = { fg = cp.yellow }, -- (preferred) any statement
+            Delimiter = { fg = cp.rosewater }, -- character that needs attention
+            ["@variable.parameter"] = { fg = cp.rosewater, style = {} },
 
             -- Todo, fixme
             TodoFgTODO = { fg = cp.mauve },
             TodoBgTODO = { bg = cp.mauve },
 
+            -- Bash
+            ["@keyword.import.bash"] = { link = "Keyword" },
+
+            -- Lua
+            ["@keyword.luadoc"] = { link = "Comment" },
+
             -- Pyhton
+            ["@function.method.call.python"] = { link = "Text" },
             ["@string.documentation.python"] = { link = "Comment", style = { "italic" } },
+
+            -- Java
+            ["javaFold"] = { link = "Delimiter" },
+            ["javaParen"] = { link = "Delimiter" },
+            ["javaConceptKind"] = { link = "Keyword" },
           }
         end,
       })
