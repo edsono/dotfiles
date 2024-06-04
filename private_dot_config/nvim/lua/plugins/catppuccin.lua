@@ -59,7 +59,7 @@ return {
             Number = { fg = cp.sky }, --   a number constant: 234, 0xff
             Float = { fg = cp.sky }, --    a floating point constant: 2.3e10
 
-            -- Orange like: Peach, Rosewater
+            -- Orange like: Peach, Flamingo
             Conditional = { fg = cp.peach, style = {} }, --  if, then, else, endif, switch, etc.
             Repeat = { fg = cp.peach }, --   for, do, while, etc.
             Label = { fg = cp.peach }, --    case, default, etc.
