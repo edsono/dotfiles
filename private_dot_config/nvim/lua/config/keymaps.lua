@@ -5,3 +5,5 @@ local map = vim.keymap
 
 -- clear search highlights
 map.set("n", "<space><CR>", ":nohl<CR>", { desc = "Clear search highlights" })
+
+-- TODO: fazer um atalho para alterar a linha atual como comentário

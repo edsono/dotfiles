@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+
+killargs=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+	-*)
+		killargs="$killargs $1"
+		shift
+		;;
+	*)
+		break
+		;;
+	esac
+done
+
+for pidfile in "$@"; do
+	pid=$(cat $pidfile)
+	kill $killargs $pid
+done
