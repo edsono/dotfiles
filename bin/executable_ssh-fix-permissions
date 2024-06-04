@@ -5,15 +5,11 @@
 #/ Fix file permissions on .ssh directory
 set -e
 
-if [ "$1" = "--help" ]
-then
-    grep '^#/' <"$0" |
-    cut -c4-
-    exit 2
+if [ "$1" = "--help" ]; then
+	grep '^#/' <"$0" |
+		cut -c4-
+	exit 2
 fi
 
-for f in ~/.ssh/*
-do
-    chmod 600 $f
-done
-
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/*
