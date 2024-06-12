@@ -116,12 +116,12 @@ export ARCHFLAGS="-arch x86_64"
 # For a full list of active aliases, run `alias`.
 #
 # Example aliases
-alias zshrc="nvim ~/.zshrc"
-alias ohmyzsh="nvim ~/.oh-my-zsh"
 alias l="lsd"
 alias ll="lsd -lh"
 alias la="lsd -lha"
 alias cm="chezmoi"
+alias lg="lazygit"
+alias zshrc="nvim ~/.zshrc"
 
 # ---- HomeBrew ----
 export HOMEBREW_NO_ENV_HINTS=1
