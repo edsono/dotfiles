@@ -124,6 +124,7 @@ alias la="lsd -lha"
 alias cm="chezmoi"
 
 # ---- HomeBrew ----
+export HOMEBREW_NO_ENV_HINTS=1
 unameOut="$(uname -s)"
 case "${unameOut}" in
     Linux*)     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" ;;
