@@ -193,3 +193,7 @@ alias cat="bat"
 # ---- Zoxide (better cd) ----
 eval "$(zoxide init zsh)"
 alias cd="z"
+
+# ---- Python ----
+# Set breakpoint() in Python to call pudb
+export PYTHONBREAKPOINT="pudb.set_trace"
