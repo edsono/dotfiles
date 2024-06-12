@@ -42,6 +42,7 @@ return {
             ["@variable.member"] = { fg = cp.text },
             ["@variable.builtin"] = { fg = cp.text },
             ["@tag.attribute"] = { link = "Identifier" },
+            ["@punctuation.bracket"] = { link = "Text" },
 
             -- Purple like: Mauve, Lavender
             Boolean = { fg = cp.lavender }, --  a boolean constant: TRUE, false
