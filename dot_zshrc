@@ -120,7 +120,7 @@ alias l="lsd"
 alias ll="lsd -lh"
 alias la="lsd -lha"
 alias cm="chezmoi"
-alias lg="lazygit"
+alias gg="lazygit"
 alias zshrc="nvim ~/.zshrc"
 
 # ---- HomeBrew ----
