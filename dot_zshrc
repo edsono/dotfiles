@@ -128,6 +128,7 @@ alias zrc="nvim ~/.zshrc"
 
 # ---- HomeBrew ----
 export HOMEBREW_NO_ENV_HINTS=1
+export HOMEBREW_NO_AUTO_UPDATE=1
 unameOut="$(uname -s)"
 case "${unameOut}" in
     Linux*)     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" ;;
