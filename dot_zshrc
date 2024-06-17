@@ -124,7 +124,7 @@ alias ll="lsd -lh"
 alias la="lsd -lha"
 alias cm="chezmoi"
 alias gg="lazygit"
-alias zshrc="nvim ~/.zshrc"
+alias zrc="nvim ~/.zshrc"
 
 # ---- HomeBrew ----
 export HOMEBREW_NO_ENV_HINTS=1
