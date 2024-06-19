@@ -51,6 +51,7 @@ return {
             -- Green like: Green, Teal
             String = { fg = cp.green }, -- a string constant: "this is a string"
             Character = { fg = cp.teal }, --  a character constant: 'c', '\n'
+            ["@string.regexp"] = { link = "String" },
             ["@string.escape"] = { link = "Character" },
             ["@constant.regex"] = { link = "Character" },
             ["@operator.regex"] = { link = "Character" },
