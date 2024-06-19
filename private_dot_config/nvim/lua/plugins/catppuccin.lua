@@ -55,6 +55,7 @@ return {
             ["@string.escape"] = { link = "Character" },
             ["@constant.regex"] = { link = "Character" },
             ["@operator.regex"] = { link = "Character" },
+            ["@property.regex"] = { link = "Character" },
             ["@punctuation.bracket.regex"] = { link = "Character" },
 
             -- Blue like: Blue, Sky, Sapphire
