@@ -57,6 +57,7 @@ return {
             ["@operator.regex"] = { link = "Character" },
             ["@property.regex"] = { link = "Character" },
             ["@punctuation.bracket.regex"] = { link = "Character" },
+            ["@punctuation.delimiter.regex"] = { link = "Character" },
 
             -- Blue like: Blue, Sky, Sapphire
             Number = { fg = cp.sky }, --   a number constant: 234, 0xff
