@@ -9,4 +9,4 @@ if [ $# -eq 0 -o "$1" = "-h" ]; then
 fi
 
 # Commands to execute
-sudo dnf module enable nodejs:20
+sudo dnf module -y enable nodejs:20

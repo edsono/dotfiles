@@ -9,7 +9,7 @@ if [ $(cat /etc/redhat-release | grep -oh -m 1 '[[:digit:]]\+' | head -n 1) -ge 
 	# Select an newer version of NodeJS first
 	# if necessary, reset selection using: dnf module reset nodejs
 	# https://developers.redhat.com/hello-world/nodejs#enable_the_node_js_module
-	sudo dnf module enable nodejs:20
+	sudo dnf module -y enable nodejs:20
 	sudo yum -y install nodejs python3.12
 else
 	# Older version of redhat
