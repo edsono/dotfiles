@@ -116,6 +116,7 @@ return {
 
             -- Pyhton
             ["@constructor.python"] = { fg = cp.yellow },
+            ["@punctuation.special.python"] = { fg = cp.teal },
             ["@function.method.call.python"] = { link = "Text" },
             ["@string.documentation.python"] = { link = "Comment", style = { "italic" } },
 
