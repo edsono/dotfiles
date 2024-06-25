@@ -115,6 +115,7 @@ return {
             ["@keyword.luadoc"] = { link = "Comment" },
 
             -- Pyhton
+            ["@constructor.python"] = { fg = cp.yellow },
             ["@function.method.call.python"] = { link = "Text" },
             ["@string.documentation.python"] = { link = "Comment", style = { "italic" } },
 
