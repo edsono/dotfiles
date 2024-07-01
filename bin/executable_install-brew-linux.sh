@@ -4,7 +4,7 @@ set -e
 
 sudo yum -y groupinstall 'Development Tools'
 
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Install modern Unix
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
