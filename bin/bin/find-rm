@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+#/ Usage: find-rm [FILE] [FILE]...
+#/ Remove files recursivelly from current dir.
+set -e
+
+if [ $# -eq 0 -o "$1" = "--help" ]; then
+	grep '^#/' <"$0" |
+		cut -c4-
+	exit 2
+fi
+
+for f in "$@"; do
+	find . -name "$f" -type f -exec rm {} \;
+done

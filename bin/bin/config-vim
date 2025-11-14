@@ -1,0 +1,17 @@
+#!/usr/bin/env sh
+# Usage: ln-vimfiles
+# Link files of vimfiles project in homedir
+set -e
+
+if [ "$1" = "--help" ]
+then
+    grep '^#/' <"$0" |
+    cut -c4-
+    exit 2
+fi
+
+# Assume vimfiles will be in ~/Code/vimfiles
+cd $HOME/Code/vimfiles >/dev/null 2>&1 || exit 1
+ln -sf $HOME/Code/vimfiles/vimrc  $HOME/.vimrc
+ln -sf $HOME/Code/vimfiles/gvimrc $HOME/.gvimrc
+[ -d $HOME/.vim ] || ln -sf $HOME/Code/vimfiles $HOME/.vim

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Usage: config-env
+# Link files of dotfiles project in homedir
+set -e
+
+if [ "$1" = "--help" ]
+then
+    grep '^#/' <"$0" |
+    cut -c4-
+    exit 2
+fi
+
+# Assume dotfiles will be in ~/Code/dotfiles
+for f in $HOME/Code/dotfiles/*
+do
+  echo "Copying $f to $HOME/.$(basename $f)"
+  [ -f "$f" -o -d "$f" ] && ln -sf $f $HOME/.$(basename $f)
+done
+
+# Apaga os arquivos que não deveriam terem sido linkados
+cd $HOME && rm .bin .fish .README
+
+# Cria os diretórios binários
+[ -d $HOME/.local ]   || mkdir -p $HOME/.local
+[ -d $HOME/.local/bin ]   || ln -sf $HOME/Code/dotfiles/bin  $HOME/.local/bin

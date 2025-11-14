@@ -1,0 +1,81 @@
+[user]
+	name = Edson César
+	email = edsono@gmail.com
+[color]
+	status = auto
+	diff = auto
+	branch = auto
+	interactive = auto
+[core]
+  excludesfile = /Users/edson/.gitignore
+	editor = nvim
+	pager = delta
+	autocrlf = input
+	ignorecase = false
+	safecrlf = warn
+[alias]
+  unstage = rm --cached
+  unstage-all = rm -r --cached .
+  review = log -p --max-count=1
+  a = add
+  aa = add --all
+  s = status --short
+  h = !git head
+  r = !git l -20
+  br = branch
+  mt = mergetool
+  dt = difftool
+  df = diff
+  dc = diff --cached
+  st = stash
+  ci = commit
+  co = checkout
+  head = !git l -1
+  div = divergence
+  fa = fetch --all
+  la = !git l --all
+  ra = !git r --all
+  ff = merge --ff-only
+  who = shortlog -s --
+  amend = commit --amend
+  pullff = pull --ff-only
+  hu = config status.showUntrackedFiles no
+  substatus = "submodule foreach \"git status; true\""
+  l = log --graph --abbrev-commit --date=relative --decorate
+  ll = log --pretty=oneline --abbrev-commit --max-count=15 --decorate
+  lg = log --pretty=oneline --abbrev-commit --max-count=15 --graph --decorate
+[branch]
+  autosetupmerge = true
+  autosetuprebase = always
+[apply]
+  whitespace = nowarn
+[gc]
+  auto = 1
+[push]
+	default = current
+[format]
+  pretty=format:%C(yellow)%h%Creset -%C(red)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset
+[help]
+  format = web
+[diff]
+	tool = vimdiff
+  colorMoved = default
+[difftool]
+  prompt = false
+[difftool "default-difftool"]
+  cmd = nvim -f -d $LOCAL $REMOTE
+[mergetool "vimdiff3"]
+	cmd = nvim -f -d -c \"wincmd J\" \"$MERGED\" \"$LOCAL\" \"$BASE\" \"$REMOTE\"
+	trustExitCode = false
+[merge]
+  conflictstyle = diff3
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+  navigate = true    # use n and N to move between diff sections
+  side-by-side = true
+  # delta detects terminal colors automatically; set one of these to disable auto-detection
+  # dark = true
+  # light = true
+[init]
+	defaultBranch = master

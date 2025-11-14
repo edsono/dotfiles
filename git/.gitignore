@@ -1,0 +1,49 @@
+*~
+.env
+.DS_Store
+.DS_Store
+
+# Vim
+*.swp
+.vim/swap
+.vim/sessions
+.vim/doc/tags
+.vim/.netrwhist
+
+# VS Code
+.vscode
+
+# Py.test
+.cache
+
+# C extensions
+*.so
+
+# Python
+*.egg
+*.egg-info
+*.py[cod]
+dist
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+__pycache__
+
+# Installer logs
+pip-log.txt
+
+# Translations
+*.mo
+
+# SQLite databases
+*.sqlite3
+
+# Virtual environment
+.venv

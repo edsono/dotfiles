@@ -1,0 +1,8 @@
+#!/usr/bin/env fish
+# Usage: config-fish
+# Configure fish shell.
+
+mkdir -p $HOME/.config/fish
+mkdir -p $HOME/.config/fish/conf.d
+cp $HOME/Code/dotfiles/fish/fishfile $HOME/.config/fish/fishfile
+cp $HOME/Code/dotfiles/fish/config.fish $HOME/.config/fish/config.fish

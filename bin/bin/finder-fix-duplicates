@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+#/ Usage: finder-fix-duplicates
+#/ Fix duplicate or old items on "Open With..." list in OSX
+set -e
+
+if [ "$1" = "--help" ]; then
+	grep '^#/' <"$0" |
+		cut -c4-
+	exit 2
+fi
+
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -kill -r -domain local -domain system -domain user
+
+echo "Relaunch Finder (control+option+click on Finder icon in the Dock)..."
