@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-#/ Usage: runtime-java-select
-#/ Compatibility wrapper for select-java.
-set -euo pipefail
-
-exec "$(dirname "$0")/select-java" "$@"

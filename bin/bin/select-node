@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#/ Usage: selectNode
+#/ Usage: select-node
 #/ Interactively select Node.js version on Linux (RH-like, Debian-like, Arch-like).
 set -euo pipefail
 
@@ -14,7 +14,7 @@ if [ $# -gt 0 ]; then
 		exit 2
 		;;
 	*)
-		echo "Error: selectNode does not accept positional arguments." >&2
+		echo "Error: select-node does not accept positional arguments." >&2
 		show_help >&2
 		exit 1
 		;;
@@ -79,7 +79,7 @@ select_with_candidates() {
 	done
 
 	echo "Error: no alternatives group found for Node.js (tried: $*)." >&2
-	echo "Configure alternatives first, then run selectNode again." >&2
+	echo "Configure alternatives first, then run select-node again." >&2
 	exit 1
 }
 

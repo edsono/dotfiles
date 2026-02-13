@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-#/ Usage: find-rm [FILE] [FILE]...
+#/ Usage: fs-find-rm [FILE] [FILE]...
 #/ Remove files recursivelly from current dir.
 set -e
 

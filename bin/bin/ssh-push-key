@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#/ Usage: ssh-push
-#/ Push ssh certification to permit passwordless login
+#/ Usage: ssh-push-key <host> [host...]
+#/ Push SSH key to permit passwordless login
 set -e
 
 if [ $# -eq 0 -o "$1" = "-h" -o "$1" = "--help" ]; then

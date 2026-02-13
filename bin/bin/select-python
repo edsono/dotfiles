@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#/ Usage: selectPython
+#/ Usage: select-python
 #/ Interactively select Python version on Linux (RH-like, Debian-like, Arch-like).
 set -euo pipefail
 
@@ -14,7 +14,7 @@ if [ $# -gt 0 ]; then
 		exit 2
 		;;
 	*)
-		echo "Error: selectPython does not accept positional arguments." >&2
+		echo "Error: select-python does not accept positional arguments." >&2
 		show_help >&2
 		exit 1
 		;;
@@ -79,7 +79,7 @@ select_with_candidates() {
 	done
 
 	echo "Error: no alternatives group found for Python (tried: $*)." >&2
-	echo "Configure alternatives first, then run selectPython again." >&2
+	echo "Configure alternatives first, then run select-python again." >&2
 	exit 1
 }
 
