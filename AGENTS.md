@@ -1,43 +1,29 @@
-# Repository Guidelines
+# Agent Instructions
 
-## Project Structure & Module Organization
-- This repository is organized as **GNU Stow packages**. Each top-level directory maps to files linked into `$HOME`.
-- `zsh/.zshrc`: interactive shell defaults, aliases, PATH, and tool setup.
-- `tmux/.tmux.conf`: tmux keybindings, plugin bootstrap, and theme settings.
-- `git/.gitconfig`, `git/.gitignore`: Git defaults.
-- `bin/bin/`: utility scripts (environment bootstrap, installs, SSH helpers, DB/tool wrappers).
-- `nvim/.config/nvim/`: LazyVim-based Neovim config (`init.lua`, `lua/config/*`, `lua/plugins/*`).
+## Package Manager
+- Use system tooling only.
+- Core commands:
+```bash
+stow -t ~ zsh tmux git bin nvim
+stow -D -t ~ <package>
+bash -n bin/bin/*
+stylua nvim/.config/nvim
+nvim --headless "+Lazy! sync" +qa
+```
 
-## Build, Test, and Development Commands
-- `stow -t ~ zsh tmux git bin nvim`: link selected packages into your home directory.
-- `stow -D -t ~ <package>`: remove symlinks for one package.
-- `bash -n bin/bin/*.sh`: syntax-check shell scripts.
-- `stylua nvim/.config/nvim`: format Neovim Lua config using repo settings.
-- `nvim --headless "+Lazy! sync" +qa`: sync Neovim plugins non-interactively.
-- `./bin/bin/install-chezmoi.sh`: bootstrap dotfiles via chezmoi on a fresh machine.
+## Commit Attribution
+- AI commits MUST include:
+```text
+Co-Authored-By: Codex (GPT-5) <codex@openai.com>
+```
 
-## Coding Style & Naming Conventions
-- Shell scripts: `#!/usr/bin/env bash` + `set -e` for fail-fast behavior.
-- Prefer POSIX-safe quoting and explicit command flags; avoid implicit globals where possible.
-- Lua formatting uses `nvim/.config/nvim/stylua.toml` (spaces, width `2`, column width `120`).
-- Script naming in `bin/bin/` uses action-oriented patterns such as `install-*.sh`, `start-*.sh`, `*-fix-*.sh`.
+## Key Conventions
+- Repo structure: top-level directories are GNU Stow packages linked into `$HOME`.
+- Shell scripts: use `#!/usr/bin/env bash` when bash features are required and keep `set -e`.
+- Quote variables and use explicit flags.
+- Lua formatting: `nvim/.config/nvim/stylua.toml` (indent 2, width 120).
+- Do not commit secrets, tokens, or private host data.
 
-## Testing Guidelines
-- No formal automated test suite exists for this repo.
-- Minimum validation before PR:
-  - Run `bash -n` for changed shell scripts.
-  - Open `nvim` after Lua changes and verify startup/plugins load cleanly.
-  - Reload tmux config with `tmux source-file ~/.tmux.conf` after tmux edits.
-
-## Commit & Pull Request Guidelines
-- Keep commits short, imperative, and scoped (e.g., `Add tmux TPM bootstrap fallback`).
-- Prefer one logical change per commit.
-- PRs should include:
-  - What changed and why.
-  - Affected package(s) (`zsh`, `tmux`, `nvim`, `bin`, `git`).
-  - Manual verification steps and outcomes.
-  - Screenshots/terminal snippets for UI-facing changes (prompt, tmux statusline, Neovim UI).
-
-## Security & Configuration Tips
-- Never commit secrets, private hosts, or tokens in shell configs/scripts.
-- Keep machine-specific values overridable via environment variables when possible.
+## Local Skills
+- Use `agents-md` for updates to agent docs.
+- Skill path: `/Users/edsono/.codex/skills/agents-md/SKILL.md`
