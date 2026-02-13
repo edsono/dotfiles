@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#/ Usage: user-del <username>
+#/ Remove a user on Linux (userdel) or macOS (sysadminctl/dscl)
+set -e
+
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+	grep '^#/' <"$0" | cut -c4-
+	exit 2
+fi
+
+username="$1"
+
+run_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo "$@"
+	else
+		echo "Error: root privileges required (run as root or install sudo)." >&2
+		exit 1
+	fi
+}
+
+drop_linux_user() {
+	run_as_root userdel -r "$username"
+}
+
+drop_macos_user() {
+	# Remove account entry.
+	run_as_root sysadminctl -deleteUser "$username" >/dev/null 2>&1 || true
+	run_as_root dscl . -delete "/Users/$username" >/dev/null 2>&1 || true
+
+	# Remove home directory if it still exists.
+	if [ -d "/Users/$username" ]; then
+		run_as_root rm -rf "/Users/$username"
+	fi
+}
+
+case "$(uname -s)" in
+Linux)
+	drop_linux_user
+	;;
+Darwin)
+	drop_macos_user
+	;;
+*)
+	echo "Error: unsupported platform '$(uname -s)'." >&2
+	exit 1
+	;;
+esac

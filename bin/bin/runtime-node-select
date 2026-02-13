@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#/ Usage: runtime-node-select
+#/ Compatibility wrapper for selectNode.
+set -euo pipefail
+
+exec "$(dirname "$0")/selectNode" "$@"

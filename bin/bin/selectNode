@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+#/ Usage: selectNode
+#/ Interactively select Node.js version on Linux (RH-like, Debian-like, Arch-like).
+set -euo pipefail
+
+show_help() {
+	grep '^#/' <"$0" | cut -c4-
+}
+
+if [ $# -gt 0 ]; then
+	case "$1" in
+	-h|--help)
+		show_help
+		exit 2
+		;;
+	*)
+		echo "Error: selectNode does not accept positional arguments." >&2
+		show_help >&2
+		exit 1
+		;;
+	esac
+fi
+
+run_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo "$@"
+	else
+		echo "Error: root privileges required (run as root or install sudo)." >&2
+		exit 1
+	fi
+}
+
+ensure_linux() {
+	if [ "$(uname -s)" != "Linux" ]; then
+		echo "Error: unsupported platform '$(uname -s)'. Linux only." >&2
+		exit 1
+	fi
+
+	if [ ! -r /etc/os-release ]; then
+		echo "Error: /etc/os-release not found; unsupported Linux distribution." >&2
+		exit 1
+	fi
+}
+
+detect_linux_family() {
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	local meta
+	meta="${ID:-} ${ID_LIKE:-}"
+
+	case " $meta " in
+	*" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*|*" ol "*)
+		echo "rh"
+		;;
+	*" debian "*|*" ubuntu "*|*" linuxmint "*|*" pop "*)
+		echo "debian"
+		;;
+	*" arch "*|*" manjaro "*|*" endeavouros "*)
+		echo "arch"
+		;;
+	*)
+		echo ""
+		;;
+	esac
+}
+
+select_with_candidates() {
+	local selector_cmd="$1"
+	shift
+	local candidate
+
+	for candidate in "$@"; do
+		if "$selector_cmd" --display "$candidate" >/dev/null 2>&1; then
+			run_as_root "$selector_cmd" --config "$candidate"
+			return 0
+		fi
+	done
+
+	echo "Error: no alternatives group found for Node.js (tried: $*)." >&2
+	echo "Configure alternatives first, then run selectNode again." >&2
+	exit 1
+}
+
+ensure_linux
+
+linux_family="$(detect_linux_family)"
+if [ -z "$linux_family" ]; then
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	echo "Error: unsupported Linux distribution family (ID='${ID:-unknown}', ID_LIKE='${ID_LIKE:-unknown}')." >&2
+	exit 1
+fi
+
+case "$linux_family" in
+rh)
+	if command -v alternatives >/dev/null 2>&1; then
+		select_with_candidates alternatives node nodejs
+	else
+		echo "Error: required command 'alternatives' not found. Install the alternatives system tools package for your distro." >&2
+		exit 1
+	fi
+	;;
+debian)
+	if command -v update-alternatives >/dev/null 2>&1; then
+		select_with_candidates update-alternatives node nodejs
+	else
+		echo "Error: required command 'update-alternatives' not found. Install the alternatives system tools package for your distro." >&2
+		exit 1
+	fi
+	;;
+arch)
+	if command -v update-alternatives >/dev/null 2>&1; then
+		select_with_candidates update-alternatives node nodejs
+	elif command -v alternatives >/dev/null 2>&1; then
+		select_with_candidates alternatives node nodejs
+	else
+		echo "Error: neither 'update-alternatives' nor 'alternatives' found for Node.js selection on Arch-like Linux." >&2
+		echo "Install an alternatives provider and register Node.js versions first." >&2
+		exit 1
+	fi
+	;;
+*)
+	echo "Error: internal distro family error '$linux_family'." >&2
+	exit 1
+	;;
+esac

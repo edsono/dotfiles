@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+#/ Usage:
+#/   user-add --admin <username>
+#/   user-add --app <username>
+#/   user-add <username>
+#/ Create Linux users for admin, app/service, or standard roles.
+set -euo pipefail
+
+show_help() {
+	grep '^#/' <"$0" | cut -c4-
+}
+
+if [ $# -eq 0 ]; then
+	show_help
+	exit 2
+fi
+
+role="standard"
+username=""
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	-h|--help)
+		show_help
+		exit 2
+		;;
+	--admin)
+		if [ "$role" != "standard" ]; then
+			echo "Error: use only one role flag (--admin or --app)." >&2
+			exit 1
+		fi
+		role="admin"
+		shift
+		;;
+	--app)
+		if [ "$role" != "standard" ]; then
+			echo "Error: use only one role flag (--admin or --app)." >&2
+			exit 1
+		fi
+		role="app"
+		shift
+		;;
+	--*)
+		echo "Error: unknown option '$1'." >&2
+		exit 1
+		;;
+	*)
+		if [ -n "$username" ]; then
+			echo "Error: only one username is supported." >&2
+			exit 1
+		fi
+		username="$1"
+		shift
+		;;
+	esac
+done
+
+if [ -z "$username" ]; then
+	echo "Error: missing username." >&2
+	show_help >&2
+	exit 1
+fi
+
+require_cmd() {
+	if ! command -v "$1" >/dev/null 2>&1; then
+		echo "Error: required command '$1' not found." >&2
+		exit 1
+	fi
+}
+
+run_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo "$@"
+	else
+		echo "Error: root privileges required (run as root or install sudo)." >&2
+		exit 1
+	fi
+}
+
+ensure_supported_platform() {
+	if [ "$(uname -s)" != "Linux" ]; then
+		echo "Error: unsupported platform '$(uname -s)'. Linux only." >&2
+		exit 1
+	fi
+
+	if [ ! -r /etc/os-release ]; then
+		echo "Error: /etc/os-release not found; unsupported Linux distribution." >&2
+		exit 1
+	fi
+
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	family="${ID_LIKE:-} ${ID:-}"
+	if ! printf '%s\n' "$family" | grep -Eq '(rhel|fedora|centos|rocky|almalinux|debian|ubuntu|arch)'; then
+		echo "Error: unsupported Linux distribution family (ID='${ID:-unknown}', ID_LIKE='${ID_LIKE:-unknown}')." >&2
+		exit 1
+	fi
+}
+
+user_exists() {
+	getent passwd "$username" >/dev/null 2>&1
+}
+
+find_nologin_shell() {
+	if [ -x /usr/sbin/nologin ]; then
+		echo "/usr/sbin/nologin"
+	elif [ -x /sbin/nologin ]; then
+		echo "/sbin/nologin"
+	else
+		echo "Error: nologin binary not found (/usr/sbin/nologin or /sbin/nologin)." >&2
+		exit 1
+	fi
+}
+
+find_admin_group() {
+	if getent group wheel >/dev/null 2>&1; then
+		echo "wheel"
+	elif getent group sudo >/dev/null 2>&1; then
+		echo "sudo"
+	else
+		echo ""
+	fi
+}
+
+create_standard_user() {
+	run_as_root useradd -m -s /bin/bash "$username"
+}
+
+create_app_user() {
+	nologin_shell="$(find_nologin_shell)"
+	run_as_root useradd --system --no-create-home -s "$nologin_shell" "$username"
+}
+
+create_admin_user() {
+	admin_group="$(find_admin_group)"
+	if [ -z "$admin_group" ]; then
+		echo "Error: cannot grant admin access (missing both 'wheel' and 'sudo' groups)." >&2
+		exit 1
+	fi
+
+	run_as_root useradd -m -s /bin/bash -G "$admin_group" "$username"
+}
+
+ensure_supported_platform
+require_cmd getent
+require_cmd useradd
+
+if user_exists; then
+	echo "Error: user '$username' already exists." >&2
+	exit 1
+fi
+
+case "$role" in
+admin)
+	create_admin_user
+	;;
+app)
+	create_app_user
+	;;
+standard)
+	create_standard_user
+	;;
+*)
+	echo "Error: internal role error '$role'." >&2
+	exit 1
+	;;
+esac

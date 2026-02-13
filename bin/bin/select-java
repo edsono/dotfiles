@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+#/ Usage: select-java
+#/ Interactively select Java version on Linux (RH-like, Debian-like, Arch-like).
+set -euo pipefail
+
+show_help() {
+	grep '^#/' <"$0" | cut -c4-
+}
+
+if [ $# -gt 0 ]; then
+	case "$1" in
+	-h|--help)
+		show_help
+		exit 2
+		;;
+	*)
+		echo "Error: select-java does not accept positional arguments." >&2
+		show_help >&2
+		exit 1
+		;;
+	esac
+fi
+
+run_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo "$@"
+	else
+		echo "Error: root privileges required (run as root or install sudo)." >&2
+		exit 1
+	fi
+}
+
+require_cmd() {
+	if ! command -v "$1" >/dev/null 2>&1; then
+		echo "Error: required command '$1' not found." >&2
+		exit 1
+	fi
+}
+
+ensure_linux() {
+	if [ "$(uname -s)" != "Linux" ]; then
+		echo "Error: unsupported platform '$(uname -s)'. Linux only." >&2
+		exit 1
+	fi
+
+	if [ ! -r /etc/os-release ]; then
+		echo "Error: /etc/os-release not found; unsupported Linux distribution." >&2
+		exit 1
+	fi
+}
+
+detect_linux_family() {
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	local meta
+	meta="${ID:-} ${ID_LIKE:-}"
+
+	case " $meta " in
+	*" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*|*" ol "*)
+		echo "rh"
+		;;
+	*" debian "*|*" ubuntu "*|*" linuxmint "*|*" pop "*)
+		echo "debian"
+		;;
+	*" arch "*|*" manjaro "*|*" endeavouros "*)
+		echo "arch"
+		;;
+	*)
+		echo ""
+		;;
+	esac
+}
+
+select_with_alternatives() {
+	local cmd_name="$1"
+	require_cmd "$cmd_name"
+	run_as_root "$cmd_name" --config java
+}
+
+select_with_archlinux_java() {
+	require_cmd archlinux-java
+
+	local -a java_envs=()
+	local line env_name choice selected
+
+	while IFS= read -r line; do
+		case "$line" in
+		'  '*)
+			env_name="${line#  }"
+			env_name="${env_name%% *}"
+			[ -n "$env_name" ] && java_envs+=("$env_name")
+			;;
+		esac
+	done <<EOF
+$(archlinux-java status)
+EOF
+
+	if [ "${#java_envs[@]}" -eq 0 ]; then
+		echo "Error: no Java environments found. Install a JRE/JDK package first." >&2
+		exit 1
+	fi
+
+	printf 'Available Java environments:\n'
+	for i in "${!java_envs[@]}"; do
+		printf '%2d) %s\n' "$((i + 1))" "${java_envs[$i]}"
+	done
+
+	printf 'Choose Java environment number: '
+	read -r choice
+
+	if ! [ "$choice" -ge 1 ] 2>/dev/null || [ "$choice" -gt "${#java_envs[@]}" ]; then
+		echo "Error: invalid selection '$choice'." >&2
+		exit 1
+	fi
+
+	selected="${java_envs[$((choice - 1))]}"
+	run_as_root archlinux-java set "$selected"
+}
+
+ensure_linux
+
+linux_family="$(detect_linux_family)"
+if [ -z "$linux_family" ]; then
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	echo "Error: unsupported Linux distribution family (ID='${ID:-unknown}', ID_LIKE='${ID_LIKE:-unknown}')." >&2
+	exit 1
+fi
+
+case "$linux_family" in
+rh)
+	if command -v alternatives >/dev/null 2>&1; then
+		select_with_alternatives alternatives
+	else
+		echo "Error: required command 'alternatives' not found. Install the alternatives system tools package for your distro." >&2
+		exit 1
+	fi
+	;;
+debian)
+	if command -v update-alternatives >/dev/null 2>&1; then
+		select_with_alternatives update-alternatives
+	else
+		echo "Error: required command 'update-alternatives' not found. Install the alternatives system tools package for your distro." >&2
+		exit 1
+	fi
+	;;
+arch)
+	select_with_archlinux_java
+	;;
+*)
+	echo "Error: internal distro family error '$linux_family'." >&2
+	exit 1
+	;;
+esac
