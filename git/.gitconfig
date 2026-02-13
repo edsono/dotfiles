@@ -36,6 +36,7 @@
   la = !git l --all
   ra = !git r --all
   ff = merge --ff-only
+  wt = worktree
   who = shortlog -s --
   amend = commit --amend
   pullff = pull --ff-only
