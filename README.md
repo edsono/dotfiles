@@ -7,7 +7,7 @@ Configurações pessoais de terminal/editor gerenciadas com **GNU Stow**.
 - `tmux/`: configuração do tmux (`.tmux.conf`).
 - `git/`: configuração global e ignore (`.gitconfig`, `.gitignore`).
 - `nvim/`: configuração do Neovim (LazyVim em `nvim/.config/nvim`).
-- `bin/bin/`: scripts utilitários (bootstrap, instalação, SSH e helpers).
+- `bin/bin/`: scripts utilitários (SSH, manutenção e helpers).
 
 ## Pré-requisitos
 - `stow`
@@ -58,11 +58,11 @@ stylua nvim/.config/nvim
 nvim --headless "+Lazy! sync" +qa
 ```
 
-## Bootstrap em máquina nova
-Script disponível para instalar/aplicar via chezmoi:
+## Neovim
+Para baixar/aplicar sua configuração do Neovim deste repositório:
 
 ```bash
-./bin/bin/install-chezmoi.sh
+stow -t ~ nvim
 ```
 
 ## Contribuição
