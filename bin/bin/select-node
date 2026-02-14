@@ -1,25 +1,52 @@
 #!/usr/bin/env bash
-#/ Usage: select-node
-#/ Interactively select Node.js version on Linux (RH-like, Debian-like, Arch-like).
+#/ Usage:
+#/   select-node
+#/   select-node --current
+#/   select-node --set <value>
+#/ Select, inspect, or set Node.js runtime on Linux (RH-like, Debian-like, Arch-like).
 set -euo pipefail
 
 show_help() {
 	grep '^#/' <"$0" | cut -c4-
 }
 
-if [ $# -gt 0 ]; then
+mode="interactive"
+set_value=""
+
+while [ $# -gt 0 ]; do
 	case "$1" in
 	-h|--help)
 		show_help
 		exit 2
 		;;
+	--current)
+		if [ "$mode" != "interactive" ]; then
+			echo "Error: use only one mode (--current or --set)." >&2
+			exit 1
+		fi
+		mode="current"
+		shift
+		;;
+	--set)
+		if [ "$mode" != "interactive" ]; then
+			echo "Error: use only one mode (--current or --set)." >&2
+			exit 1
+		fi
+		if [ $# -lt 2 ]; then
+			echo "Error: missing value for --set." >&2
+			exit 1
+		fi
+		mode="set"
+		set_value="$2"
+		shift 2
+		;;
 	*)
-		echo "Error: select-node does not accept positional arguments." >&2
+		echo "Error: unknown option '$1'." >&2
 		show_help >&2
 		exit 1
 		;;
 	esac
-fi
+done
 
 run_as_root() {
 	if [ "$(id -u)" -eq 0 ]; then
@@ -51,7 +78,7 @@ detect_linux_family() {
 	meta="${ID:-} ${ID_LIKE:-}"
 
 	case " $meta " in
-	*" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*|*" ol "*)
+	*" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*|*|*" ol "*)
 		echo "rh"
 		;;
 	*" debian "*|*" ubuntu "*|*" linuxmint "*|*" pop "*)
@@ -66,21 +93,121 @@ detect_linux_family() {
 	esac
 }
 
-select_with_candidates() {
+list_alternative_paths() {
 	local selector_cmd="$1"
-	shift
-	local candidate
+	local group="$2"
 
-	for candidate in "$@"; do
-		if "$selector_cmd" --display "$candidate" >/dev/null 2>&1; then
-			run_as_root "$selector_cmd" --config "$candidate"
+	if "$selector_cmd" --list "$group" >/dev/null 2>&1; then
+		"$selector_cmd" --list "$group"
+		return 0
+	fi
+
+	"$selector_cmd" --display "$group" 2>/dev/null | awk '/^\// {print $1}'
+}
+
+resolve_selector_cmd() {
+	case "$linux_family" in
+	rh)
+		if command -v alternatives >/dev/null 2>&1; then
+			echo "alternatives"
+		else
+			echo ""
+		fi
+		;;
+	debian)
+		if command -v update-alternatives >/dev/null 2>&1; then
+			echo "update-alternatives"
+		else
+			echo ""
+		fi
+		;;
+	arch)
+		if command -v update-alternatives >/dev/null 2>&1; then
+			echo "update-alternatives"
+		elif command -v alternatives >/dev/null 2>&1; then
+			echo "alternatives"
+		else
+			echo ""
+		fi
+		;;
+	*)
+		echo ""
+		;;
+	esac
+}
+
+resolve_group_name() {
+	local selector_cmd="$1"
+	local candidate
+	for candidate in node nodejs; do
+		if [ -n "$(list_alternative_paths "$selector_cmd" "$candidate")" ]; then
+			echo "$candidate"
 			return 0
 		fi
 	done
+	echo ""
+}
 
-	echo "Error: no alternatives group found for Node.js (tried: $*)." >&2
-	echo "Configure alternatives first, then run select-node again." >&2
+current_node_command() {
+	if command -v node >/dev/null 2>&1; then
+		echo "node"
+	elif command -v nodejs >/dev/null 2>&1; then
+		echo "nodejs"
+	else
+		echo ""
+	fi
+}
+
+print_current() {
+	local cmd_name
+	cmd_name="$(current_node_command)"
+	if [ -z "$cmd_name" ]; then
+		echo "Error: no active Node.js command found in PATH." >&2
+		exit 1
+	fi
+	readlink -f "$(command -v "$cmd_name")"
+}
+
+resolve_target_path() {
+	local selector_cmd="$1"
+	local group="$2"
+	local value="$3"
+	local path
+	local -a matches=()
+
+	while IFS= read -r path; do
+		[ -z "$path" ] && continue
+		if [ "$path" = "$value" ] || [ "$(basename "$path")" = "$value" ]; then
+			matches+=("$path")
+		fi
+	done <<EOF2
+$(list_alternative_paths "$selector_cmd" "$group")
+EOF2
+
+	if [ "${#matches[@]}" -eq 1 ]; then
+		echo "${matches[0]}"
+		return 0
+	fi
+
+	if [ "${#matches[@]}" -gt 1 ]; then
+		echo "Error: ambiguous value '$value'. Use full alternative path." >&2
+		exit 1
+	fi
+
+	echo "Error: value '$value' not found for group '$group'." >&2
+	echo "Available paths:" >&2
+	list_alternative_paths "$selector_cmd" "$group" >&2
 	exit 1
+}
+
+run_interactive() {
+	run_as_root "$selector_cmd" --config "$group_name"
+}
+
+run_set() {
+	local target_path
+	target_path="$(resolve_target_path "$selector_cmd" "$group_name" "$set_value")"
+	run_as_root "$selector_cmd" --set "$group_name" "$target_path"
 }
 
 ensure_linux
@@ -93,36 +220,30 @@ if [ -z "$linux_family" ]; then
 	exit 1
 fi
 
-case "$linux_family" in
-rh)
-	if command -v alternatives >/dev/null 2>&1; then
-		select_with_candidates alternatives node nodejs
-	else
-		echo "Error: required command 'alternatives' not found. Install the alternatives system tools package for your distro." >&2
-		exit 1
-	fi
+selector_cmd="$(resolve_selector_cmd)"
+if [ -z "$selector_cmd" ]; then
+	echo "Error: alternatives tool not found for this distro family." >&2
+	exit 1
+fi
+
+group_name="$(resolve_group_name "$selector_cmd")"
+if [ -z "$group_name" ]; then
+	echo "Error: no alternatives group found for Node.js (tried: node, nodejs)." >&2
+	exit 1
+fi
+
+case "$mode" in
+interactive)
+	run_interactive
 	;;
-debian)
-	if command -v update-alternatives >/dev/null 2>&1; then
-		select_with_candidates update-alternatives node nodejs
-	else
-		echo "Error: required command 'update-alternatives' not found. Install the alternatives system tools package for your distro." >&2
-		exit 1
-	fi
+current)
+	print_current
 	;;
-arch)
-	if command -v update-alternatives >/dev/null 2>&1; then
-		select_with_candidates update-alternatives node nodejs
-	elif command -v alternatives >/dev/null 2>&1; then
-		select_with_candidates alternatives node nodejs
-	else
-		echo "Error: neither 'update-alternatives' nor 'alternatives' found for Node.js selection on Arch-like Linux." >&2
-		echo "Install an alternatives provider and register Node.js versions first." >&2
-		exit 1
-	fi
+set)
+	run_set
 	;;
 *)
-	echo "Error: internal distro family error '$linux_family'." >&2
+	echo "Error: internal mode error '$mode'." >&2
 	exit 1
 	;;
 esac

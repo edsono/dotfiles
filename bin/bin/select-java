@@ -1,25 +1,52 @@
 #!/usr/bin/env bash
-#/ Usage: select-java
-#/ Interactively select Java version on Linux (RH-like, Debian-like, Arch-like).
+#/ Usage:
+#/   select-java
+#/   select-java --current
+#/   select-java --set <value>
+#/ Select, inspect, or set Java runtime on Linux (RH-like, Debian-like, Arch-like).
 set -euo pipefail
 
 show_help() {
 	grep '^#/' <"$0" | cut -c4-
 }
 
-if [ $# -gt 0 ]; then
+mode="interactive"
+set_value=""
+
+while [ $# -gt 0 ]; do
 	case "$1" in
 	-h|--help)
 		show_help
 		exit 2
 		;;
+	--current)
+		if [ "$mode" != "interactive" ]; then
+			echo "Error: use only one mode (--current or --set)." >&2
+			exit 1
+		fi
+		mode="current"
+		shift
+		;;
+	--set)
+		if [ "$mode" != "interactive" ]; then
+			echo "Error: use only one mode (--current or --set)." >&2
+			exit 1
+		fi
+		if [ $# -lt 2 ]; then
+			echo "Error: missing value for --set." >&2
+			exit 1
+		fi
+		mode="set"
+		set_value="$2"
+		shift 2
+		;;
 	*)
-		echo "Error: select-java does not accept positional arguments." >&2
+		echo "Error: unknown option '$1'." >&2
 		show_help >&2
 		exit 1
 		;;
 	esac
-fi
+done
 
 run_as_root() {
 	if [ "$(id -u)" -eq 0 ]; then
@@ -58,7 +85,7 @@ detect_linux_family() {
 	meta="${ID:-} ${ID_LIKE:-}"
 
 	case " $meta " in
-	*" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*|*" ol "*)
+	*" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*|*|*" ol "*)
 		echo "rh"
 		;;
 	*" debian "*|*" ubuntu "*|*" linuxmint "*|*" pop "*)
@@ -73,29 +100,111 @@ detect_linux_family() {
 	esac
 }
 
-select_with_alternatives() {
-	local cmd_name="$1"
-	require_cmd "$cmd_name"
-	run_as_root "$cmd_name" --config java
+list_alternative_paths() {
+	local selector_cmd="$1"
+
+	if "$selector_cmd" --list java >/dev/null 2>&1; then
+		"$selector_cmd" --list java
+		return 0
+	fi
+
+	"$selector_cmd" --display java 2>/dev/null | awk '/^\// {print $1}'
 }
 
-select_with_archlinux_java() {
-	require_cmd archlinux-java
+resolve_selector_cmd() {
+	case "$linux_family" in
+	rh)
+		if command -v alternatives >/dev/null 2>&1; then
+			echo "alternatives"
+		else
+			echo ""
+		fi
+		;;
+	debian)
+		if command -v update-alternatives >/dev/null 2>&1; then
+			echo "update-alternatives"
+		else
+			echo ""
+		fi
+		;;
+	*)
+		echo ""
+		;;
+	esac
+}
 
+print_current_alternative_java() {
+	if ! command -v java >/dev/null 2>&1; then
+		echo "Error: no active Java command found in PATH." >&2
+		exit 1
+	fi
+	readlink -f "$(command -v java)"
+}
+
+resolve_target_path() {
+	local selector_cmd="$1"
+	local value="$2"
+	local path
+	local -a matches=()
+
+	while IFS= read -r path; do
+		[ -z "$path" ] && continue
+		if [ "$path" = "$value" ] || [ "$(basename "$path")" = "$value" ]; then
+			matches+=("$path")
+		fi
+	done <<EOF2
+$(list_alternative_paths "$selector_cmd")
+EOF2
+
+	if [ "${#matches[@]}" -eq 1 ]; then
+		echo "${matches[0]}"
+		return 0
+	fi
+
+	if [ "${#matches[@]}" -gt 1 ]; then
+		echo "Error: ambiguous value '$value'. Use full alternative path." >&2
+		exit 1
+	fi
+
+	echo "Error: value '$value' not found for group 'java'." >&2
+	echo "Available paths:" >&2
+	list_alternative_paths "$selector_cmd" >&2
+	exit 1
+}
+
+run_interactive_alternative_java() {
+	run_as_root "$selector_cmd" --config java
+}
+
+run_set_alternative_java() {
+	local target_path
+	target_path="$(resolve_target_path "$selector_cmd" "$set_value")"
+	run_as_root "$selector_cmd" --set java "$target_path"
+}
+
+arch_java_envs() {
+	archlinux-java status | awk '/^  / {print $1}'
+}
+
+print_current_arch_java() {
+	local current_env
+	current_env="$(archlinux-java status | awk '/\(default\)/ {print $1; exit}')"
+	if [ -z "$current_env" ]; then
+		echo "Error: could not detect current Java environment." >&2
+		exit 1
+	fi
+	echo "$current_env"
+}
+
+run_interactive_arch_java() {
 	local -a java_envs=()
 	local line env_name choice selected
 
 	while IFS= read -r line; do
-		case "$line" in
-		'  '*)
-			env_name="${line#  }"
-			env_name="${env_name%% *}"
-			[ -n "$env_name" ] && java_envs+=("$env_name")
-			;;
-		esac
-	done <<EOF
-$(archlinux-java status)
-EOF
+		[ -n "$line" ] && java_envs+=("$line")
+	done <<EOF2
+$(arch_java_envs)
+EOF2
 
 	if [ "${#java_envs[@]}" -eq 0 ]; then
 		echo "Error: no Java environments found. Install a JRE/JDK package first." >&2
@@ -119,6 +228,23 @@ EOF
 	run_as_root archlinux-java set "$selected"
 }
 
+run_set_arch_java() {
+	local env_name
+	while IFS= read -r env_name; do
+		if [ "$env_name" = "$set_value" ]; then
+			run_as_root archlinux-java set "$set_value"
+			return 0
+		fi
+	done <<EOF2
+$(arch_java_envs)
+EOF2
+
+	echo "Error: value '$set_value' not found in archlinux-java environments." >&2
+	echo "Available environments:" >&2
+	arch_java_envs >&2
+	exit 1
+}
+
 ensure_linux
 
 linux_family="$(detect_linux_family)"
@@ -130,24 +256,37 @@ if [ -z "$linux_family" ]; then
 fi
 
 case "$linux_family" in
-rh)
-	if command -v alternatives >/dev/null 2>&1; then
-		select_with_alternatives alternatives
-	else
-		echo "Error: required command 'alternatives' not found. Install the alternatives system tools package for your distro." >&2
+rh|debian)
+	selector_cmd="$(resolve_selector_cmd)"
+	if [ -z "$selector_cmd" ]; then
+		echo "Error: alternatives tool not found for this distro family." >&2
 		exit 1
 	fi
-	;;
-debian)
-	if command -v update-alternatives >/dev/null 2>&1; then
-		select_with_alternatives update-alternatives
-	else
-		echo "Error: required command 'update-alternatives' not found. Install the alternatives system tools package for your distro." >&2
-		exit 1
-	fi
+	case "$mode" in
+	interactive)
+		run_interactive_alternative_java
+		;;
+	current)
+		print_current_alternative_java
+		;;
+	set)
+		run_set_alternative_java
+		;;
+	esac
 	;;
 arch)
-	select_with_archlinux_java
+	require_cmd archlinux-java
+	case "$mode" in
+	interactive)
+		run_interactive_arch_java
+		;;
+	current)
+		print_current_arch_java
+		;;
+	set)
+		run_set_arch_java
+		;;
+	esac
 	;;
 *)
 	echo "Error: internal distro family error '$linux_family'." >&2
