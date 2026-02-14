@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+#/ Usage: config-modern-unix
+#/ Install modern Unix utilities and Starship on supported Linux distros.
+set -euo pipefail
+
+show_help() {
+	grep '^#/' <"$0" | cut -c4-
+}
+
+if [ $# -gt 0 ]; then
+	case "$1" in
+	-h|--help)
+		show_help
+		exit 2
+		;;
+	*)
+		echo "Error: config-modern-unix does not accept positional arguments." >&2
+		show_help >&2
+		exit 1
+		;;
+	esac
+fi
+
+run_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo "$@"
+	else
+		echo "Error: root privileges required (run as root or install sudo)." >&2
+		exit 1
+	fi
+}
+
+ensure_linux() {
+	if [ "$(uname -s)" != "Linux" ]; then
+		echo "Error: unsupported platform '$(uname -s)'. Linux only." >&2
+		exit 1
+	fi
+	if [ ! -r /etc/os-release ]; then
+		echo "Error: /etc/os-release not found; unsupported Linux distribution." >&2
+		exit 1
+	fi
+}
+
+detect_linux_family() {
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	local meta
+	meta="${ID:-} ${ID_LIKE:-}"
+
+	case " $meta " in
+	*" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*|*" ol "*)
+		echo "rh"
+		;;
+	*" debian "*|*" ubuntu "*|*" linuxmint "*|*" pop "*)
+		echo "debian"
+		;;
+	*" arch "*|*" manjaro "*|*" endeavouros "*)
+		echo "arch"
+		;;
+	*)
+		echo ""
+		;;
+	esac
+}
+
+package_for_tool() {
+	local family="$1"
+	local tool="$2"
+
+	case "${family}:${tool}" in
+	rh:fd) echo "fd-find" ;;
+	rh:delta) echo "git-delta" ;;
+	debian:fd) echo "fd-find" ;;
+	debian:delta) echo "git-delta" ;;
+	arch:fd) echo "fd" ;;
+	arch:delta) echo "git-delta" ;;
+	*:starship) echo "starship" ;;
+	*) echo "${tool}" ;;
+	esac
+}
+
+install_pkg() {
+	local family="$1"
+	local pkg="$2"
+
+	case "$family" in
+	rh)
+		run_as_root dnf -y install "$pkg"
+		;;
+	debian)
+		run_as_root apt-get -y install "$pkg"
+		;;
+	arch)
+		run_as_root pacman --noconfirm -S "$pkg"
+		;;
+	*)
+		echo "Error: unsupported family '$family'." >&2
+		exit 1
+		;;
+	esac
+}
+
+command_for_tool() {
+	local tool="$1"
+	case "$tool" in
+	fd) echo "fd" ;;
+	delta) echo "delta" ;;
+	*) echo "$tool" ;;
+	esac
+}
+
+install_starship_fallback() {
+	if command -v starship >/dev/null 2>&1; then
+		return 0
+	fi
+	curl -fsSL https://starship.rs/install.sh | sh -s -- -y
+}
+
+ensure_linux
+linux_family="$(detect_linux_family)"
+if [ -z "$linux_family" ]; then
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	echo "Error: unsupported Linux distribution family (ID='${ID:-unknown}', ID_LIKE='${ID_LIKE:-unknown}')." >&2
+	exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+	echo "Error: required command 'curl' not found." >&2
+	exit 1
+fi
+
+if [ "$linux_family" = "debian" ]; then
+	run_as_root apt-get update
+fi
+
+tools=(
+	bat
+	fd
+	ripgrep
+	fzf
+	eza
+	zoxide
+	jq
+	yq
+	duf
+	dust
+	btop
+	delta
+	stow
+)
+
+failed_tools=()
+installed_tools=()
+
+for tool in "${tools[@]}"; do
+	pkg="$(package_for_tool "$linux_family" "$tool")"
+	if install_pkg "$linux_family" "$pkg"; then
+		installed_tools+=("$tool")
+	else
+		failed_tools+=("$tool")
+	fi
+done
+
+starship_pkg="$(package_for_tool "$linux_family" "starship")"
+if install_pkg "$linux_family" "$starship_pkg"; then
+	installed_tools+=("starship")
+else
+	echo "Warning: package install for Starship failed; trying upstream installer." >&2
+	if install_starship_fallback; then
+		installed_tools+=("starship")
+	else
+		failed_tools+=("starship")
+	fi
+fi
+
+echo "Installed/updated tools:"
+for tool in "${installed_tools[@]}"; do
+	echo "- ${tool}"
+done
+
+if [ "${#failed_tools[@]}" -gt 0 ]; then
+	echo "Failed tools:"
+	for tool in "${failed_tools[@]}"; do
+		echo "- ${tool}"
+	done
+	exit 1
+fi
+
+echo "Validation:"
+for tool in "${installed_tools[@]}"; do
+	cmd_name="$(command_for_tool "$tool")"
+	if command -v "$cmd_name" >/dev/null 2>&1; then
+		echo "- ${tool}: ok (${cmd_name})"
+	else
+		echo "- ${tool}: missing command '${cmd_name}'"
+	fi
+done
