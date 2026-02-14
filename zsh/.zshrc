@@ -60,22 +60,53 @@ fi
 # Compilation flags
 export ARCHFLAGS="-arch x86_64"
 
+# ---- Python ----
+# Set breakpoint() in Python to call pudb
+export PYTHONBREAKPOINT="pudb.set_trace"
+
+# Oracle client
+export PATH=$HOME/oracle:$PATH
+export DYLD_LIBRARY_PATH=$HOME/oracle:$DYLD_LIBRARY_PATH
+
+# MySQL
+export PATH=$PATH:/usr/local/mysql/bin
+export PATH="/opt/homebrew/opt/mysql@8.4/bin:$PATH"
+
+# Set personal aliases, overriding those provided by oh-my-zsh libs,
+# plugins, and themes. Aliases can be placed here, though oh-my-zsh
+# users are encouraged to define aliases within the ZSH_CUSTOM folder.
+# For a full list of active aliases, run `alias`.
+alias ls='ls --color'
+alias g="git"
+alias gg="lazygit"
+alias zrc="nvim ~/.zshrc"
+alias stow='stow -t ~'
+alias cx='codex-profiles'
+
 # ---- HomeBrew ----
 export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_AUTO_UPDATE=1
 unameOut="$(uname -s)"
 case "${unameOut}" in
-    Linux*)     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" ;;
-    Darwin*)    eval "$(/opt/homebrew/bin/brew shellenv)";;
-    CYGWIN*)    echo Cygwin;;
-    MINGW*)     echo MinGw;;
-    MSYS_NT*)   echo Git;;
-    *)          echo "UNKNOWN:${unameOut}"
+    Linux*)
+      if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+      fi
+      ;;
+    Darwin*)
+      if [[ -x /opt/homebrew/bin/brew ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      fi
+      ;;
+    *)
+      ;;
 esac
 
 # ---- FZF -----
 # Set up fzf key bindings and fuzzy completion
-eval "$(fzf --zsh)"
+if command -v fzf >/dev/null 2>&1; then
+  eval "$(fzf --zsh)"
+fi
 
 # -- Use fd instead of fzf --
 export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
@@ -86,15 +117,33 @@ export FZF_ALT_C_COMMAND="fd --type=d --hidden --strip-cwd-prefix --exclude .git
 # - The first argument to the function ($1) is the base path to start traversal
 # - See the source code (completion.{bash,zsh}) for the details.
 _fzf_compgen_path() {
-  fd --hidden --exclude .git . "$1"
+  if command -v fd >/dev/null 2>&1; then
+    fd --hidden --exclude .git . "$1"
+  else
+    find "$1" -mindepth 1 -not -path '*/.git/*'
+  fi
 }
 
 # Use fd to generate the list for directory completion
 _fzf_compgen_dir() {
-  fd --type=d --hidden --exclude .git . "$1"
+  if command -v fd >/dev/null 2>&1; then
+    fd --type=d --hidden --exclude .git . "$1"
+  else
+    find "$1" -mindepth 1 -type d -not -path '*/.git/*'
+  fi
 }
 
-show_file_or_dir_preview="if [ -d {} ]; then lsd --tree --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi"
+if command -v lsd >/dev/null 2>&1; then
+  dir_preview='lsd --tree --color=always {} | head -200'
+else
+  dir_preview='ls -la {} | head -200'
+fi
+if command -v bat >/dev/null 2>&1; then
+  file_preview='bat -n --color=always --line-range :500 {}'
+else
+  file_preview='sed -n "1,200p" {}'
+fi
+show_file_or_dir_preview="if [ -d {} ]; then ${dir_preview}; else ${file_preview}; fi"
 
 export FZF_DEFAULT_OPTS=" \
 --color=bg+:#313244,bg:#1E1E2E,spinner:#F5E0DC,hl:#F38BA8 \
@@ -124,37 +173,48 @@ _fzf_comprun() {
 export BAT_THEME="Catppuccin Mocha"
 
 # ---- Zoxide (better cd) ----
-eval "$(zoxide init zsh)"
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+fi
 
-# ---- Python ----
-# Set breakpoint() in Python to call pudb
-export PYTHONBREAKPOINT="pudb.set_trace"
+# Java
+set_java_home() {
+  local java_bin=""
+  local java_home_candidate=""
 
-# Java 25
-export JAVA_HOME=$(/usr/libexec/java_home -v 21)
-export PATH="$JAVA_HOME/bin:$PATH"
+  if command -v select-java >/dev/null 2>&1; then
+    java_bin="$(select-java --current 2>/dev/null || true)"
+    if [[ -n "$java_bin" && -x "$java_bin" ]]; then
+      java_home_candidate="$(cd "$(dirname "$java_bin")/.." && pwd -P 2>/dev/null || true)"
+    fi
+  fi
 
-# Oracle client
-export PATH=$HOME/oracle:$PATH
-export DYLD_LIBRARY_PATH=$HOME/oracle:$DYLD_LIBRARY_PATH
+  if [[ -z "$java_home_candidate" && "$(uname -s)" = "Darwin" && -x /usr/libexec/java_home ]]; then
+    java_home_candidate="$(/usr/libexec/java_home 2>/dev/null || true)"
+  fi
 
-# MySQL
-export PATH=$PATH:/usr/local/mysql/bin
-export PATH="/opt/homebrew/opt/mysql@8.4/bin:$PATH"
+  if [[ -n "$java_home_candidate" && -d "$java_home_candidate" ]]; then
+    export JAVA_HOME="$java_home_candidate"
+    export PATH="$JAVA_HOME/bin:$PATH"
+  fi
+}
+set_java_home
+unset -f set_java_home
 
 # Starship
-eval "$(starship init zsh)"
+if command -v starship >/dev/null 2>&1; then
+  eval "$(starship init zsh)"
+else
+  autoload -U colors && colors
+  PROMPT='%F{cyan}%n@%m%f %F{blue}%~%f %F{green}%#%f '
+fi
 
-# Set personal aliases, overriding those provided by oh-my-zsh libs,
-# plugins, and themes. Aliases can be placed here, though oh-my-zsh
-# users are encouraged to define aliases within the ZSH_CUSTOM folder.
-# For a full list of active aliases, run `alias`.
-alias l="lsd"
-alias ll="lsd -lh"
-alias la="lsd -lha"
-alias ls='ls --color'
-alias g="git"
-alias gg="lazygit"
-alias zrc="nvim ~/.zshrc"
-alias stow='stow -t ~'
-alias cx='codex-profiles'
+if command -v lsd >/dev/null 2>&1; then
+  alias l="lsd"
+  alias ll="lsd -lh"
+  alias la="lsd -lha"
+else
+  alias l="ls"
+  alias ll="ls -lh"
+  alias la="ls -lha"
+fi
