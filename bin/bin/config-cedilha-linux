@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+#/ Usage: config-cedilha-linux [--no-set-us-intl] [--help]
+#/ Configure cedilha support (' + c => ccedilla) on Linux for Arch, Debian-like, and RH-like distros.
+set -euo pipefail
+
+show_help() {
+	grep '^#/' <"$0" | cut -c4-
+}
+
+run_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo "$@"
+	else
+		echo "Error: root privileges required (run as root or install sudo)." >&2
+		exit 1
+	fi
+}
+
+ensure_linux() {
+	if [ "$(uname -s)" != "Linux" ]; then
+		echo "Error: unsupported platform '$(uname -s)'. Linux only." >&2
+		exit 1
+	fi
+	if [ ! -r /etc/os-release ]; then
+		echo "Error: /etc/os-release not found; unsupported Linux distribution." >&2
+		exit 1
+	fi
+}
+
+detect_linux_family() {
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	local meta
+	meta="${ID:-} ${ID_LIKE:-}"
+
+	case " $meta " in
+	*" rhel "*|*" fedora "*|*" centos "*|*" rocky "*|*" almalinux "*|*" ol "*)
+		echo "rh"
+		;;
+	*" debian "*|*" ubuntu "*|*" linuxmint "*|*" pop "*)
+		echo "debian"
+		;;
+	*" arch "*|*" manjaro "*|*" endeavouros "*)
+		echo "arch"
+		;;
+	*)
+		echo ""
+		;;
+	esac
+}
+
+ensure_locale_in_locale_gen() {
+	if [ ! -f /etc/locale.gen ]; then
+		echo "Warning: /etc/locale.gen not found; skipping locale.gen update." >&2
+		return 0
+	fi
+
+	if run_as_root grep -Eq '^[[:space:]]*#?[[:space:]]*pt_BR\.UTF-8[[:space:]]+UTF-8' /etc/locale.gen; then
+		run_as_root sed -i -E 's/^[[:space:]]*#?[[:space:]]*(pt_BR\.UTF-8[[:space:]]+UTF-8)/\1/' /etc/locale.gen
+	else
+		printf '%s\n' 'pt_BR.UTF-8 UTF-8' | run_as_root tee -a /etc/locale.gen >/dev/null
+	fi
+}
+
+ensure_ptbr_locale_generated() {
+	if locale -a 2>/dev/null | grep -Eiq '^pt_BR\.(utf8|UTF-8)$'; then
+		return 0
+	fi
+
+	case "$1" in
+	arch|debian)
+		ensure_locale_in_locale_gen
+		run_as_root locale-gen
+		;;
+	rh)
+		run_as_root localedef -i pt_BR -f UTF-8 pt_BR.UTF-8
+		;;
+	*)
+		echo "Error: unsupported family '$1'." >&2
+		exit 1
+		;;
+	esac
+}
+
+set_system_locale_ptbr() {
+	case "$1" in
+	arch|rh)
+		if command -v localectl >/dev/null 2>&1; then
+			run_as_root localectl set-locale LANG=pt_BR.UTF-8
+		elif [ -f /etc/locale.conf ]; then
+			printf '%s\n' 'LANG=pt_BR.UTF-8' | run_as_root tee /etc/locale.conf >/dev/null
+		else
+			echo "Warning: could not set system locale automatically (missing localectl and /etc/locale.conf)." >&2
+		fi
+		;;
+	debian)
+		if command -v update-locale >/dev/null 2>&1; then
+			run_as_root update-locale LANG=pt_BR.UTF-8
+		else
+			printf '%s\n' 'LANG=pt_BR.UTF-8' | run_as_root tee /etc/default/locale >/dev/null
+		fi
+		;;
+	*)
+		echo "Error: unsupported family '$1'." >&2
+		exit 1
+		;;
+	esac
+}
+
+configure_user_xcompose() {
+	local xcompose_file="$HOME/.XCompose"
+	local begin_marker="# >>> config-cedilha-linux >>>"
+	local end_marker="# <<< config-cedilha-linux <<<"
+	local tmp_file
+	tmp_file="$(mktemp)"
+
+	if [ -f "$xcompose_file" ]; then
+		awk -v begin="$begin_marker" -v end="$end_marker" '
+			$0 == begin {inside=1; next}
+			$0 == end {inside=0; next}
+			!inside {print}
+		' "$xcompose_file" >"$tmp_file"
+	else
+		: >"$tmp_file"
+	fi
+
+	if ! grep -Fqx 'include "%L"' "$tmp_file"; then
+		printf '%s\n' 'include "%L"' >>"$tmp_file"
+		printf '\n' >>"$tmp_file"
+	fi
+
+	{
+		printf '%s\n' "$begin_marker"
+		printf '%s\n' '# Cedilha fallback for dead acute and compose sequences'
+		printf '%s\n' '<dead_acute> <c> : "ç" ccedilla'
+		printf '%s\n' '<dead_acute> <C> : "Ç" Ccedilla'
+		printf '%s\n' '<Multi_key> <apostrophe> <c> : "ç" ccedilla'
+		printf '%s\n' '<Multi_key> <apostrophe> <C> : "Ç" Ccedilla'
+		printf '%s\n' "$end_marker"
+	} >>"$tmp_file"
+
+	mv "$tmp_file" "$xcompose_file"
+}
+
+configure_user_environment() {
+	local env_dir="$HOME/.config/environment.d"
+	local env_file="$env_dir/99-xcompose.conf"
+	mkdir -p "$env_dir"
+	printf '%s\n' 'XCOMPOSEFILE='"$HOME"'/.XCompose' >"$env_file"
+}
+
+set_us_intl=1
+if [ $# -gt 0 ]; then
+	case "$1" in
+	--no-set-us-intl)
+		set_us_intl=0
+		;;
+	--set-us-intl)
+		# Backward compatibility: this is now the default behavior.
+		set_us_intl=1
+		;;
+	-h|--help)
+		show_help
+		exit 0
+		;;
+	*)
+		echo "Error: unknown argument '$1'." >&2
+		show_help >&2
+		exit 1
+		;;
+	esac
+fi
+
+ensure_linux
+linux_family="$(detect_linux_family)"
+if [ -z "$linux_family" ]; then
+	# shellcheck disable=SC1091
+	. /etc/os-release
+	echo "Error: unsupported Linux distribution family (ID='${ID:-unknown}', ID_LIKE='${ID_LIKE:-unknown}')." >&2
+	exit 1
+fi
+
+ensure_ptbr_locale_generated "$linux_family"
+set_system_locale_ptbr "$linux_family"
+configure_user_xcompose
+configure_user_environment
+
+if [ "$set_us_intl" -eq 1 ]; then
+	if command -v localectl >/dev/null 2>&1; then
+		run_as_root localectl set-x11-keymap us "" intl "compose:caps"
+	else
+		echo "Warning: localectl not available; skipped keyboard layout setup." >&2
+	fi
+fi
+
+echo "Configured:"
+echo "- System LANG set to pt_BR.UTF-8"
+echo "- User compose file at $HOME/.XCompose"
+echo "- XCOMPOSEFILE in $HOME/.config/environment.d/99-xcompose.conf"
+if [ "$set_us_intl" -eq 1 ]; then
+	echo "- X11 keymap set to us/int'l with compose:caps"
+else
+	echo "- Keyboard layout unchanged (--no-set-us-intl was provided)"
+fi
+echo
+echo "Open a new login session to apply locale/env changes everywhere."
