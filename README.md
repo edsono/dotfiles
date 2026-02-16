@@ -15,6 +15,7 @@ Gerenciamento de configurações pessoais com [GNU Stow](https://www.gnu.org/sof
 ## Requisitos
 
 - `stow` instalado no sistema
+- `curl` e `unzip` (para auto-instalar JetBrainsMono Nerd Font)
 
 ## Instalação
 
@@ -23,6 +24,9 @@ Aplicar todos os pacotes no `$HOME`:
 ```bash
 ./install.sh
 ```
+
+Por padrão, o script também garante a instalação da JetBrainsMono Nerd Font
+(macOS e Linux) caso ela não exista.
 
 Simular sem alterar nada:
 
@@ -40,6 +44,12 @@ Remover links criados pelo Stow:
 
 ```bash
 ./install.sh --delete
+```
+
+Pular instalação/verificação de fonte:
+
+```bash
+./install.sh --skip-font-install
 ```
 
 ## Uso manual do stow
