@@ -73,6 +73,8 @@ sync_dotfiles_scp_fallback() {
 		"${repo_root}/tmux" \
 		"${repo_root}/zsh" \
 		"${repo_root}/AGENTS.md" \
+		"${repo_root}/README.md" \
+		"${repo_root}/install.sh" \
 		"${repo_root}/LICENSE" \
 		"${host}:~/.dotfiles/"
 }
