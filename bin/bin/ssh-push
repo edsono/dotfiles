@@ -1,19 +1,42 @@
 #!/usr/bin/env bash
-#/ Usage: ssh-push <host> [host...]
+#/ Usage: ssh-push [--force] <host> [host...]
 #/ Push SSH key and sync dotfiles to remote host(s).
 set -euo pipefail
+
+log_step() {
+	local message="$1"
+	printf "[%s] %s\n" "$(date '+%H:%M:%S')" "${message}"
+}
 
 show_help() {
 	grep '^#/' <"$0" | cut -c4-
 }
 
-if [ $# -eq 0 ] || [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+repo_root="$(cd "${script_dir}/../.." && pwd -P)"
+force=0
+hosts=()
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--force)
+		force=1
+		;;
+	-h|--help)
+		show_help
+		exit 2
+		;;
+	*)
+		hosts+=("$1")
+		;;
+	esac
+	shift
+done
+
+if [ "${#hosts[@]}" -eq 0 ]; then
 	show_help
 	exit 2
 fi
-
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-repo_root="$(cd "${script_dir}/../.." && pwd -P)"
 
 ensure_local_prereqs() {
 	if ! command -v ssh >/dev/null 2>&1; then
@@ -53,9 +76,16 @@ push_key_to_host() {
 		return 0
 	fi
 
-	# Fallback when ssh-copy-id is unavailable.
-	ssh "${host}" 'umask 077; mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys'
-	cat "${public_key_file}" | ssh "${host}" 'cat >> ~/.ssh/authorized_keys'
+	# Fallback when ssh-copy-id is unavailable; avoid duplicate keys.
+	cat "${public_key_file}" | ssh "${host}" '
+		umask 077
+		mkdir -p ~/.ssh
+		touch ~/.ssh/authorized_keys
+		key="$(cat)"
+		if ! grep -qxF "${key}" ~/.ssh/authorized_keys; then
+			printf "%s\n" "${key}" >> ~/.ssh/authorized_keys
+		fi
+	'
 }
 
 sync_dotfiles_rsync() {
@@ -93,23 +123,115 @@ sync_dotfiles() {
 	sync_dotfiles_scp_fallback "${host}"
 }
 
-apply_remote_stow() {
+ensure_remote_stow() {
 	local host="$1"
 	ssh "${host}" '
-		if ! command -v stow >/dev/null 2>&1; then
-			echo "Error: stow is required on remote host." >&2
+		set -e
+		if command -v stow >/dev/null 2>&1; then
+			exit 0
+		fi
+
+		if command -v dnf >/dev/null 2>&1; then
+			install_cmd="dnf -y install stow"
+		elif command -v yum >/dev/null 2>&1; then
+			install_cmd="yum -y install stow"
+		elif command -v apt-get >/dev/null 2>&1; then
+			install_cmd="apt-get update && apt-get -y install stow"
+		elif command -v apk >/dev/null 2>&1; then
+			install_cmd="apk add --no-cache stow"
+		elif command -v pacman >/dev/null 2>&1; then
+			install_cmd="pacman --noconfirm -S stow"
+		else
+			echo "Warning: no supported package manager found to install stow." >&2
 			exit 1
 		fi
+
+		if [ "$(id -u)" -eq 0 ]; then
+			sh -lc "${install_cmd}" || true
+		elif command -v sudo >/dev/null 2>&1; then
+			sudo sh -lc "${install_cmd}" || true
+		else
+			echo "Warning: cannot install stow (need root or sudo)." >&2
+			exit 1
+		fi
+
+		if ! command -v stow >/dev/null 2>&1; then
+			echo "Warning: stow is still unavailable after install attempt." >&2
+			exit 1
+		fi
+	'
+}
+
+apply_remote_stow() {
+	local host="$1"
+	local force_mode="${2:-0}"
+
+	if [ "${force_mode}" -eq 1 ]; then
+		ssh "${host}" '
+			set -e
+			cd ~/.dotfiles
+			find zsh tmux git bin nvim codex ghostty -mindepth 1 \( -type f -o -type l \) \
+				-not -path "*/.DS_Store" \
+				-not -path "*/.gitkeep" \
+				-print |
+				sed "s|^[^/]*/||" |
+				sort -u |
+				while IFS= read -r rel_path; do
+					[ -n "${rel_path}" ] || continue
+					target="${HOME}/${rel_path}"
+					if [ -e "${target}" ] || [ -L "${target}" ]; then
+						rm -rf -- "${target}"
+					fi
+				done
+			stow -t ~ zsh tmux git bin nvim codex ghostty
+		'
+		return 0
+	fi
+
+	ssh "${host}" '
 		cd ~/.dotfiles
 		stow -t ~ zsh tmux git bin nvim codex ghostty
 	'
 }
 
-ensure_local_prereqs
-public_key_file="$(ensure_local_key)"
+install_remote_modern_unix() {
+	local host="$1"
+	ssh "${host}" '
+		if [ ! -x ~/.dotfiles/bin/bin/config-modern-unix ]; then
+			echo "Warning: ~/.dotfiles/bin/bin/config-modern-unix not found; skipping." >&2
+			exit 1
+		fi
+		~/.dotfiles/bin/bin/config-modern-unix
+	'
+}
 
-for host in "$@"; do
+ensure_local_prereqs
+log_step "Checking local prerequisites."
+public_key_file="$(ensure_local_key)"
+log_step "Using SSH public key: ${public_key_file}"
+
+for host in "${hosts[@]}"; do
+	log_step "Host ${host}: start."
+	log_step "Host ${host}: pushing SSH key."
 	push_key_to_host "${host}" "${public_key_file}"
+	log_step "Host ${host}: syncing dotfiles to ~/.dotfiles."
 	sync_dotfiles "${host}"
-	apply_remote_stow "${host}"
+
+	log_step "Host ${host}: ensuring stow is available."
+	if ensure_remote_stow "${host}"; then
+		if [ "${force}" -eq 1 ]; then
+			log_step "Host ${host}: applying stow packages with --force cleanup."
+		else
+			log_step "Host ${host}: applying stow packages."
+		fi
+		apply_remote_stow "${host}" "${force}"
+	else
+		echo "Warning: skipping stow apply on ${host} because stow is unavailable." >&2
+	fi
+
+	log_step "Host ${host}: running modern unix installer (best effort)."
+	if ! install_remote_modern_unix "${host}"; then
+		echo "Warning: modern unix install step failed on ${host}; continuing." >&2
+	fi
+	log_step "Host ${host}: done."
 done
