@@ -77,83 +77,6 @@ export PATH=$PATH:/usr/local/mysql/bin
 export PATH="/opt/homebrew/opt/mysql@8.4/bin:$PATH"
 
 #-------------
-# Base aliases
-#-------------
-# Set personal aliases, overriding those provided by oh-my-zsh libs,
-# plugins, and themes. Aliases can be placed here, though oh-my-zsh
-# users are encouraged to define aliases within the ZSH_CUSTOM folder.
-# For a full list of active aliases, run `alias`.
-alias g="git"
-alias gg="lazygit"
-alias zrc="nvim ~/.zshrc"
-alias stow='stow -t ~'
-alias cx='codex-profiles'
-if command -v z >/dev/null 2>&1; then
-  alias cd='z'
-fi
-
-#-------------
-# Modern Unix aliases (with fallback)
-#-------------
-if command -v lsd >/dev/null 2>&1; then
-  alias ls='lsd --oneline'
-  alias l="lsd"
-  alias ll="lsd -lh"
-  alias la="lsd -lha"
-elif ls --color -d . >/dev/null 2>&1; then
-  alias ls='ls --color'
-  alias l="ls --color"
-  alias ll="ls -lh --color"
-  alias la="ls -lha --color"
-else
-  alias l="ls"
-  alias ll="ls -lh"
-  alias la="ls -lha"
-fi
-
-if command -v bat >/dev/null 2>&1; then
-  alias cat='bat --style=plain --paging=never'
-fi
-if command -v fd >/dev/null 2>&1; then
-  alias find='fd'
-fi
-if command -v rg >/dev/null 2>&1; then
-  alias grep='rg'
-fi
-if command -v dust >/dev/null 2>&1; then
-  alias du='dust'
-fi
-if command -v duf >/dev/null 2>&1; then
-  alias df='duf'
-fi
-if command -v btop >/dev/null 2>&1; then
-  alias top='btop'
-fi
-if command -v jq >/dev/null 2>&1; then
-  alias jqp='jq -C .'
-fi
-if command -v yq >/dev/null 2>&1; then
-  alias yqp='yq'
-fi
-
-if command -v delta >/dev/null 2>&1; then
-  alias diff='delta'
-  # Configure git to use delta when available.
-  if [ "$(git config --global --get core.pager 2>/dev/null)" != "delta" ]; then
-    git config --global core.pager delta >/dev/null 2>&1 || true
-  fi
-  if [ "$(git config --global --get interactive.diffFilter 2>/dev/null)" != "delta --color-only" ]; then
-    git config --global interactive.diffFilter "delta --color-only" >/dev/null 2>&1 || true
-  fi
-  if [ "$(git config --global --get delta.navigate 2>/dev/null)" != "true" ]; then
-    git config --global delta.navigate true >/dev/null 2>&1 || true
-  fi
-  if [ "$(git config --global --get delta.side-by-side 2>/dev/null)" != "true" ]; then
-    git config --global delta.side-by-side true >/dev/null 2>&1 || true
-  fi
-fi
-
-#-------------
 # HomeBrew
 #-------------
 export HOMEBREW_NO_ENV_HINTS=1
@@ -287,6 +210,83 @@ if command -v starship >/dev/null 2>&1; then
 else
   autoload -U colors && colors
   PROMPT='%F{cyan}%n@%m%f %F{blue}%~%f %F{green}%#%f '
+fi
+
+#-------------
+# Base aliases
+#-------------
+# Set personal aliases, overriding those provided by oh-my-zsh libs,
+# plugins, and themes. Aliases can be placed here, though oh-my-zsh
+# users are encouraged to define aliases within the ZSH_CUSTOM folder.
+# For a full list of active aliases, run `alias`.
+alias g="git"
+alias gg="lazygit"
+alias zrc="nvim ~/.zshrc"
+alias stow='stow -t ~'
+alias cx='codex-profiles'
+if command -v z >/dev/null 2>&1; then
+  alias cd='z'
+fi
+
+#-------------
+# Modern Unix aliases (with fallback)
+#-------------
+if command -v lsd >/dev/null 2>&1; then
+  alias ls='lsd --oneline'
+  alias l="lsd"
+  alias ll="lsd -lh"
+  alias la="lsd -lha"
+elif ls --color -d . >/dev/null 2>&1; then
+  alias ls='ls --color'
+  alias l="ls --color"
+  alias ll="ls -lh --color"
+  alias la="ls -lha --color"
+else
+  alias l="ls"
+  alias ll="ls -lh"
+  alias la="ls -lha"
+fi
+
+if command -v bat >/dev/null 2>&1; then
+  alias cat='bat --style=plain --paging=never'
+fi
+if command -v fd >/dev/null 2>&1; then
+  alias find='fd'
+fi
+if command -v rg >/dev/null 2>&1; then
+  alias grep='rg'
+fi
+if command -v dust >/dev/null 2>&1; then
+  alias du='dust'
+fi
+if command -v duf >/dev/null 2>&1; then
+  alias df='duf'
+fi
+if command -v btop >/dev/null 2>&1; then
+  alias top='btop'
+fi
+if command -v jq >/dev/null 2>&1; then
+  alias jqp='jq -C .'
+fi
+if command -v yq >/dev/null 2>&1; then
+  alias yqp='yq'
+fi
+
+if command -v delta >/dev/null 2>&1; then
+  alias diff='delta'
+  # Configure git to use delta when available.
+  if [ "$(git config --global --get core.pager 2>/dev/null)" != "delta" ]; then
+    git config --global core.pager delta >/dev/null 2>&1 || true
+  fi
+  if [ "$(git config --global --get interactive.diffFilter 2>/dev/null)" != "delta --color-only" ]; then
+    git config --global interactive.diffFilter "delta --color-only" >/dev/null 2>&1 || true
+  fi
+  if [ "$(git config --global --get delta.navigate 2>/dev/null)" != "true" ]; then
+    git config --global delta.navigate true >/dev/null 2>&1 || true
+  fi
+  if [ "$(git config --global --get delta.side-by-side 2>/dev/null)" != "true" ]; then
+    git config --global delta.side-by-side true >/dev/null 2>&1 || true
+  fi
 fi
 
 #-------------
