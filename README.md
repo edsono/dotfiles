@@ -29,6 +29,8 @@ Aplicar todos os pacotes no `$HOME`:
 Por padrão, o script também garante a instalação da JetBrainsMono Nerd Font
 (macOS e Linux) caso ela não exista, e também tenta instalar `zsh` quando não
 estiver disponível no sistema.
+Em Linux, também roda `bin/bin/config-modern-unix` (best effort), incluindo
+instalação de `git` e `lazygit`.
 
 Quando executado sem `--adopt`, o script detecta conflitos do Stow e move os
 arquivos existentes para `~/.dotfiles-backups/<timestamp>/` antes de instalar.
@@ -61,6 +63,12 @@ Pular instalação/verificação de `zsh`:
 
 ```bash
 ./install.sh --skip-zsh-install
+```
+
+Pular bootstrap `modern-unix` (git/lazygit e ferramentas relacionadas):
+
+```bash
+./install.sh --skip-modern-unix-install
 ```
 
 Definir `zsh` como shell padrão de login:

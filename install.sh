@@ -7,6 +7,7 @@ DRY_RUN=0
 ADOPT=0
 SKIP_FONT_INSTALL=0
 SKIP_ZSH_INSTALL=0
+SKIP_MODERN_UNIX_INSTALL=0
 SET_DEFAULT_SHELL=0
 PACKAGES=(zsh tmux git bin nvim codex ghostty)
 CODEX_PACKAGE="codex"
@@ -23,6 +24,8 @@ Options:
   --adopt         Adopt existing files into the stow package tree
   --skip-zsh-install
                    Skip zsh install check/package-manager install attempt
+  --skip-modern-unix-install
+                   Skip modern-unix package bootstrap (includes git/lazygit)
   --set-default-shell
                    Attempt to set zsh as the user's login shell
   --skip-font-install
@@ -100,6 +103,26 @@ run_with_privileges() {
   fi
 
   return 1
+}
+
+ensure_modern_unix_tools() {
+  local modern_unix_script=""
+
+  if [ "$(uname -s)" != "Linux" ]; then
+    echo "Skipping modern-unix installer on non-Linux platform."
+    return 0
+  fi
+
+  modern_unix_script="${SCRIPT_DIR}/bin/bin/config-modern-unix"
+  if [ ! -x "$modern_unix_script" ]; then
+    echo "warning: modern-unix installer not found or not executable: ${modern_unix_script}" >&2
+    return 0
+  fi
+
+  if ! "$modern_unix_script"; then
+    echo "warning: modern-unix installer failed; continuing." >&2
+    return 0
+  fi
 }
 
 ensure_zsh_installed() {
@@ -299,6 +322,9 @@ while [ "$#" -gt 0 ]; do
     --skip-zsh-install)
       SKIP_ZSH_INSTALL=1
       ;;
+    --skip-modern-unix-install)
+      SKIP_MODERN_UNIX_INSTALL=1
+      ;;
     --set-default-shell)
       SET_DEFAULT_SHELL=1
       ;;
@@ -331,6 +357,9 @@ cd "$SCRIPT_DIR"
 
 if [ "$MODE" = "install" ]; then
   if [ "$DRY_RUN" -eq 1 ]; then
+    if [ "$SKIP_MODERN_UNIX_INSTALL" -eq 0 ]; then
+      echo "dry-run: would run modern-unix installer (git/lazygit and related tools)."
+    fi
     if [ "$SKIP_ZSH_INSTALL" -eq 0 ]; then
       echo "dry-run: would ensure zsh is installed."
     fi
@@ -341,6 +370,9 @@ if [ "$MODE" = "install" ]; then
       echo "dry-run: would set zsh as the login shell."
     fi
   else
+    if [ "$SKIP_MODERN_UNIX_INSTALL" -eq 0 ]; then
+      ensure_modern_unix_tools
+    fi
     if [ "$SKIP_ZSH_INSTALL" -eq 0 ]; then
       ensure_zsh_installed
     fi
