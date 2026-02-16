@@ -148,7 +148,9 @@ tools=(
 	duf
 	dust
 	btop
+	htop
 	delta
+	neovim
 	stow
 )
 
