@@ -268,21 +268,34 @@ wt() {
 }
 
 wta() {
-  local repo_root="" branch="" path=""
+  local repo_root="" branch="" base_ref="" path="" links_script=""
 
   repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
     echo "wta: not in a git repository" >&2
     return 1
   }
 
-  if [ "$#" -ne 1 ]; then
-    echo "usage: wta <branch>" >&2
+  if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    echo "usage: wta <branch> [base]" >&2
     return 1
   fi
 
   branch="$1"
+  base_ref="${2:-main}"
   if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
     echo "wta: invalid branch name '$branch'" >&2
+    return 1
+  fi
+
+  git -C "$repo_root" fetch --all --prune || return 1
+
+  if [ "$#" -eq 1 ]; then
+    if ! git -C "$repo_root" show-ref --verify --quiet refs/heads/main; then
+      echo "wta: local branch 'main' not found" >&2
+      return 1
+    fi
+  elif ! git -C "$repo_root" rev-parse --verify --quiet "${base_ref}^{commit}" >/dev/null 2>&1; then
+    echo "wta: base '$base_ref' not found" >&2
     return 1
   fi
 
@@ -292,8 +305,14 @@ wta() {
     return 1
   fi
 
-  mkdir -p "$repo_root/.wt" || return 1
-  git -C "$repo_root" worktree add -b "$branch" "$path" || return 1
+  mkdir -p "$(dirname "$path")" || return 1
+  git -C "$repo_root" worktree add -b "$branch" "$path" "$base_ref" || return 1
+
+  links_script="$repo_root/scripts/wt-links.sh"
+  if [ -x "$links_script" ]; then
+    "$links_script" "$path" || return 1
+  fi
+
   builtin cd "$path" || return 1
 }
 
