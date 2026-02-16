@@ -6,7 +6,7 @@
 theme = Synthwave
 shell-integration-features = ssh-terminfo,ssh-env
 font-family = JetBrainsMono Nerd Font Mono
-font-size = 10
+font-size = 13
 
 # Local overrides (optional).
 # Use this for Omarchy integration, keybinds, window tuning, etc.
