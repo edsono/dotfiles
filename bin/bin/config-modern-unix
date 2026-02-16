@@ -137,6 +137,8 @@ if [ "$linux_family" = "debian" ]; then
 fi
 
 tools=(
+	git
+	lazygit
 	bat
 	fd
 	ripgrep
