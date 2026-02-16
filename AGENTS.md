@@ -16,6 +16,8 @@ nvim --headless "+Lazy! sync" +qa
 ```text
 Co-Authored-By: Codex (GPT-5) <codex@openai.com>
 ```
+- Use `commit-code` skill for commit workflow and message format. See `codex/.codex/skills/commit-code/SKILL.md`.
+- Amend/fix commit messages only before push. After push, do not rewrite history.
 
 ## Key Conventions
 - Repo structure: top-level directories are GNU Stow packages linked into `$HOME`.
