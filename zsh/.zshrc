@@ -17,6 +17,8 @@ bindkey '^[[1;5D' backward-word            # Ctrl + Left
 bindkey '^[[1;5C' forward-word             # Ctrl + Right
 bindkey '^[[5D' backward-word              # Fallback comum
 bindkey '^[[5C' forward-word               # Fallback comum
+bindkey '^[[3~' delete-char                # Delete
+bindkey '^[[3;2~' delete-char              # Shift+Delete (fallback)
 
 #-------------
 # History
