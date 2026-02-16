@@ -10,6 +10,7 @@ Gerenciamento de configurações pessoais com [GNU Stow](https://www.gnu.org/sof
 - `bin`
 - `nvim`
 - `codex`
+- `ghostty`
 
 ## Requisitos
 
@@ -44,7 +45,7 @@ Remover links criados pelo Stow:
 ## Uso manual do stow
 
 ```bash
-stow -t ~ zsh tmux git bin nvim codex
+stow -t ~ zsh tmux git bin nvim codex ghostty
 ```
 
 Remover um pacote específico:

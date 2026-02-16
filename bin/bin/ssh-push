@@ -68,6 +68,7 @@ sync_dotfiles_scp_fallback() {
 	ssh "${host}" 'mkdir -p ~/.dotfiles'
 	scp -r \
 		"${repo_root}/bin" \
+		"${repo_root}/ghostty" \
 		"${repo_root}/git" \
 		"${repo_root}/nvim" \
 		"${repo_root}/tmux" \
@@ -100,7 +101,7 @@ apply_remote_stow() {
 			exit 1
 		fi
 		cd ~/.dotfiles
-		stow -t ~ zsh tmux git bin nvim
+		stow -t ~ zsh tmux git bin nvim codex ghostty
 	'
 }
 

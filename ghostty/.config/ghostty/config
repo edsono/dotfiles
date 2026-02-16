@@ -1,0 +1,7 @@
+# Ghostty (Linux/Unix XDG config path)
+# Default for non-macOS machines.
+
+theme = Synthwave
+shell-integration-features = ssh-terminfo,ssh-env
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 10

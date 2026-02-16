@@ -5,7 +5,7 @@ TARGET="$HOME"
 MODE="install"
 DRY_RUN=0
 ADOPT=0
-PACKAGES=(zsh tmux git bin nvim codex)
+PACKAGES=(zsh tmux git bin nvim codex ghostty)
 
 usage() {
   cat <<USAGE
