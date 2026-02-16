@@ -93,7 +93,7 @@ alias cx='codex-profiles'
 # Modern Unix aliases (with fallback)
 #-------------
 if command -v lsd >/dev/null 2>&1; then
-  alias ls='lsd'
+  alias ls='lsd --oneline'
   alias l="lsd"
   alias ll="lsd -lh"
   alias la="lsd -lha"

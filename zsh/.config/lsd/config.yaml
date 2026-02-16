@@ -1,0 +1,19 @@
+classic: false
+
+display: almost-all
+dereference: false
+
+icons:
+  when: auto
+  theme: fancy
+  separator: " "
+
+color:
+  when: auto
+  theme: default
+
+layout: grid
+sorting:
+  column: name
+  reverse: false
+  dir-grouping: first
