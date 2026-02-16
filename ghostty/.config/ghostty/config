@@ -1,7 +1,13 @@
-# Ghostty (Linux/Unix XDG config path)
-# Default for non-macOS machines.
+# Ghostty base config (Linux/Unix - XDG path)
+# Keep this file portable and machine-agnostic.
+# Put machine/system-specific settings in:
+#   ~/.config/ghostty/config.local
 
 theme = Synthwave
 shell-integration-features = ssh-terminfo,ssh-env
 font-family = JetBrainsMono Nerd Font Mono
 font-size = 10
+
+# Local overrides (optional).
+# Use this for Omarchy integration, keybinds, window tuning, etc.
+config-file = ?~/.config/ghostty/config.local

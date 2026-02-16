@@ -288,3 +288,10 @@ else
   autoload -U colors && colors
   PROMPT='%F{cyan}%n@%m%f %F{blue}%~%f %F{green}%#%f '
 fi
+
+#-------------
+# Local overrides (not managed by stow)
+#-------------
+if [ -r "$HOME/.zshrc-local" ]; then
+  . "$HOME/.zshrc-local"
+fi
