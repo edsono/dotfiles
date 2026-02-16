@@ -88,6 +88,9 @@ alias gg="lazygit"
 alias zrc="nvim ~/.zshrc"
 alias stow='stow -t ~'
 alias cx='codex-profiles'
+if command -v z >/dev/null 2>&1; then
+  alias cd='z'
+fi
 
 #-------------
 # Modern Unix aliases (with fallback)
