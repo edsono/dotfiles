@@ -141,7 +141,7 @@ tools=(
 	fd
 	ripgrep
 	fzf
-	eza
+	lsd
 	zoxide
 	jq
 	yq

@@ -1,9 +1,6 @@
-# Enable VI mode
-# set -o vi
-
-# Fix for backspace in vi mode
-# bindkey -v '^?' backward-delete-char
-# bindkey -M viins '\e.' insert-last-word
+#-------------
+# Input / Keybindings
+#-------------
 
 # Habilita a busca no histórico com as setas para cima/para baixo
 autoload -Uz up-line-or-beginning-search
@@ -14,7 +11,9 @@ zle -N down-line-or-beginning-search
 bindkey '^[[A' up-line-or-beginning-search # Seta para cima
 bindkey '^[[B' down-line-or-beginning-search # Seta para baixo
 
-# History configuration
+#-------------
+# History
+#-------------
 export HISTSIZE=1000000000
 export SAVEHIST=$HISTSIZE
 HISTFILE="$HOME/.zsh_history"
@@ -41,6 +40,9 @@ setopt HIST_REDUCE_BLANKS    # Remove superfluous blanks from each command line 
 setopt autocd                    # allows you to change directories without typing cd
 autoload -U compinit; compinit   # initializes the Zsh completion system
 
+#-------------
+# Environment
+#-------------
 # If you come from bash you might have to change your $PATH.
 export PATH=$HOME/bin:/usr/local/bin:$PATH
 
@@ -60,7 +62,9 @@ fi
 # Compilation flags
 export ARCHFLAGS="-arch x86_64"
 
-# ---- Python ----
+#-------------
+# Python
+#-------------
 # Set breakpoint() in Python to call pudb
 export PYTHONBREAKPOINT="pudb.set_trace"
 
@@ -72,18 +76,83 @@ export DYLD_LIBRARY_PATH=$HOME/oracle:$DYLD_LIBRARY_PATH
 export PATH=$PATH:/usr/local/mysql/bin
 export PATH="/opt/homebrew/opt/mysql@8.4/bin:$PATH"
 
+#-------------
+# Base aliases
+#-------------
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
 # plugins, and themes. Aliases can be placed here, though oh-my-zsh
 # users are encouraged to define aliases within the ZSH_CUSTOM folder.
 # For a full list of active aliases, run `alias`.
-alias ls='ls --color'
 alias g="git"
 alias gg="lazygit"
 alias zrc="nvim ~/.zshrc"
 alias stow='stow -t ~'
 alias cx='codex-profiles'
 
-# ---- HomeBrew ----
+#-------------
+# Modern Unix aliases (with fallback)
+#-------------
+if command -v lsd >/dev/null 2>&1; then
+  alias ls='lsd'
+  alias l="lsd"
+  alias ll="lsd -lh"
+  alias la="lsd -lha"
+elif ls --color -d . >/dev/null 2>&1; then
+  alias ls='ls --color'
+  alias l="ls --color"
+  alias ll="ls -lh --color"
+  alias la="ls -lha --color"
+else
+  alias l="ls"
+  alias ll="ls -lh"
+  alias la="ls -lha"
+fi
+
+if command -v bat >/dev/null 2>&1; then
+  alias cat='bat --style=plain --paging=never'
+fi
+if command -v fd >/dev/null 2>&1; then
+  alias find='fd'
+fi
+if command -v rg >/dev/null 2>&1; then
+  alias grep='rg'
+fi
+if command -v dust >/dev/null 2>&1; then
+  alias du='dust'
+fi
+if command -v duf >/dev/null 2>&1; then
+  alias df='duf'
+fi
+if command -v btop >/dev/null 2>&1; then
+  alias top='btop'
+fi
+if command -v jq >/dev/null 2>&1; then
+  alias jqp='jq -C .'
+fi
+if command -v yq >/dev/null 2>&1; then
+  alias yqp='yq'
+fi
+
+if command -v delta >/dev/null 2>&1; then
+  alias diff='delta'
+  # Configure git to use delta when available.
+  if [ "$(git config --global --get core.pager 2>/dev/null)" != "delta" ]; then
+    git config --global core.pager delta >/dev/null 2>&1 || true
+  fi
+  if [ "$(git config --global --get interactive.diffFilter 2>/dev/null)" != "delta --color-only" ]; then
+    git config --global interactive.diffFilter "delta --color-only" >/dev/null 2>&1 || true
+  fi
+  if [ "$(git config --global --get delta.navigate 2>/dev/null)" != "true" ]; then
+    git config --global delta.navigate true >/dev/null 2>&1 || true
+  fi
+  if [ "$(git config --global --get delta.side-by-side 2>/dev/null)" != "true" ]; then
+    git config --global delta.side-by-side true >/dev/null 2>&1 || true
+  fi
+fi
+
+#-------------
+# HomeBrew
+#-------------
 export HOMEBREW_NO_ENV_HINTS=1
 export HOMEBREW_NO_AUTO_UPDATE=1
 unameOut="$(uname -s)"
@@ -102,7 +171,9 @@ case "${unameOut}" in
       ;;
 esac
 
-# ---- FZF -----
+#-------------
+# FZF
+#-------------
 # Set up fzf key bindings and fuzzy completion
 if command -v fzf >/dev/null 2>&1; then
   eval "$(fzf --zsh)"
@@ -152,7 +223,7 @@ export FZF_DEFAULT_OPTS=" \
 --color=selected-bg:#45475A \
 --color=border:#6C7086,label:#CDD6F4"
 export FZF_CTRL_T_OPTS="--preview '$show_file_or_dir_preview'"
-export FZF_ALT_C_OPTS="--preview 'lsd --tree --color=always {} | head -200'"
+export FZF_ALT_C_OPTS="--preview '$dir_preview'"
 
 # Advanced customization of fzf options via _fzf_comprun function
 # - The first argument to the function is the name of the command.
@@ -162,7 +233,7 @@ _fzf_comprun() {
   shift
 
   case "$command" in
-    cd)           fzf --preview 'lsd --tree --color=always {} | head -200' "$@" ;;
+    cd)           fzf --preview "$dir_preview" "$@" ;;
     export|unset) fzf --preview "eval 'echo ${}'"         "$@" ;;
     ssh)          fzf --preview 'dig {}'                   "$@" ;;
     *)            fzf --preview "$show_file_or_dir_preview" "$@" ;;
@@ -172,12 +243,16 @@ _fzf_comprun() {
 # --- Bat ---
 export BAT_THEME="Catppuccin Mocha"
 
-# ---- Zoxide (better cd) ----
+#-------------
+# Zoxide (better cd)
+#-------------
 if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init zsh)"
 fi
 
+#-------------
 # Java
+#-------------
 set_java_home() {
   local java_bin=""
   local java_home_candidate=""
@@ -201,20 +276,12 @@ set_java_home() {
 set_java_home
 unset -f set_java_home
 
+#-------------
 # Starship
+#-------------
 if command -v starship >/dev/null 2>&1; then
   eval "$(starship init zsh)"
 else
   autoload -U colors && colors
   PROMPT='%F{cyan}%n@%m%f %F{blue}%~%f %F{green}%#%f '
-fi
-
-if command -v lsd >/dev/null 2>&1; then
-  alias l="lsd"
-  alias ll="lsd -lh"
-  alias la="lsd -lha"
-else
-  alias l="ls"
-  alias ll="ls -lh"
-  alias la="ls -lha"
 fi
