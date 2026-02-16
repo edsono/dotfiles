@@ -213,6 +213,91 @@ else
 fi
 
 #-------------
+# Git worktree helpers
+#-------------
+wt() {
+  local repo_root="" query="" target="" selected=""
+
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "wt: not in a git repository" >&2
+    return 1
+  }
+
+  if [ "$#" -gt 1 ]; then
+    echo "usage: wt [query]" >&2
+    return 1
+  fi
+
+  if [ "$#" -eq 1 ]; then
+    query="$1"
+    target="$(git -C "$repo_root" worktree list --porcelain | awk '/^worktree /{print $2}' | awk -v q="$query" '
+      {
+        path=$0
+        n=split(path, parts, "/")
+        base=parts[n]
+        if (base == q) {
+          print path
+          exit
+        }
+        if (index(path, "/" q) || index(base, q)) {
+          match=path
+        }
+      }
+      END {
+        if (match != "") {
+          print match
+        }
+      }
+    ')"
+    if [ -z "$target" ]; then
+      echo "wt: no worktree match for '$query'" >&2
+      return 1
+    fi
+    builtin cd "$target" || return 1
+    return 0
+  fi
+
+  if ! command -v fzf >/dev/null 2>&1; then
+    echo "wt: fzf not found; use wt <query>" >&2
+    return 1
+  fi
+
+  selected="$(git -C "$repo_root" worktree list --porcelain | awk '/^worktree /{print $2}' | fzf --prompt='worktree> ' --height=40% --reverse)" || return 1
+  [ -n "$selected" ] || return 1
+  builtin cd "$selected" || return 1
+}
+
+wta() {
+  local repo_root="" branch="" path=""
+
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "wta: not in a git repository" >&2
+    return 1
+  }
+
+  if [ "$#" -ne 1 ]; then
+    echo "usage: wta <branch>" >&2
+    return 1
+  fi
+
+  branch="$1"
+  if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+    echo "wta: invalid branch name '$branch'" >&2
+    return 1
+  fi
+
+  path="$repo_root/.wt/$branch"
+  if [ -e "$path" ]; then
+    echo "wta: '$path' already exists" >&2
+    return 1
+  fi
+
+  mkdir -p "$repo_root/.wt" || return 1
+  git -C "$repo_root" worktree add -b "$branch" "$path" || return 1
+  builtin cd "$path" || return 1
+}
+
+#-------------
 # Base aliases
 #-------------
 # Set personal aliases, overriding those provided by oh-my-zsh libs,
