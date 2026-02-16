@@ -76,6 +76,7 @@ package_for_tool() {
 	debian:delta) echo "git-delta" ;;
 	arch:fd) echo "fd" ;;
 	arch:delta) echo "git-delta" ;;
+	*:tldr) echo "tealdeer" ;;
 	*:starship) echo "starship" ;;
 	*) echo "${tool}" ;;
 	esac
@@ -107,6 +108,9 @@ command_for_tool() {
 	case "$tool" in
 	fd) echo "fd" ;;
 	delta) echo "delta" ;;
+	ripgrep) echo "rg" ;;
+	neovim) echo "nvim" ;;
+	tldr) echo "tldr" ;;
 	*) echo "$tool" ;;
 	esac
 }
@@ -147,6 +151,7 @@ tools=(
 	zoxide
 	jq
 	yq
+	tldr
 	duf
 	dust
 	btop
@@ -158,8 +163,15 @@ tools=(
 
 failed_tools=()
 installed_tools=()
+already_installed_tools=()
 
 for tool in "${tools[@]}"; do
+	cmd_name="$(command_for_tool "$tool")"
+	if command -v "$cmd_name" >/dev/null 2>&1; then
+		already_installed_tools+=("$tool")
+		continue
+	fi
+
 	pkg="$(package_for_tool "$linux_family" "$tool")"
 	if install_pkg "$linux_family" "$pkg"; then
 		installed_tools+=("$tool")
@@ -169,14 +181,18 @@ for tool in "${tools[@]}"; do
 done
 
 starship_pkg="$(package_for_tool "$linux_family" "starship")"
-if install_pkg "$linux_family" "$starship_pkg"; then
-	installed_tools+=("starship")
+if command -v starship >/dev/null 2>&1; then
+	already_installed_tools+=("starship")
 else
-	echo "Warning: package install for Starship failed; trying upstream installer." >&2
-	if install_starship_fallback; then
+	if install_pkg "$linux_family" "$starship_pkg"; then
 		installed_tools+=("starship")
 	else
-		failed_tools+=("starship")
+		echo "Warning: package install for Starship failed; trying upstream installer." >&2
+		if install_starship_fallback; then
+			installed_tools+=("starship")
+		else
+			failed_tools+=("starship")
+		fi
 	fi
 fi
 
@@ -184,6 +200,13 @@ echo "Installed/updated tools:"
 for tool in "${installed_tools[@]}"; do
 	echo "- ${tool}"
 done
+
+if [ "${#already_installed_tools[@]}" -gt 0 ]; then
+	echo "Already installed tools:"
+	for tool in "${already_installed_tools[@]}"; do
+		echo "- ${tool}"
+	done
+fi
 
 if [ "${#failed_tools[@]}" -gt 0 ]; then
 	echo "Failed tools:"
@@ -194,7 +217,7 @@ if [ "${#failed_tools[@]}" -gt 0 ]; then
 fi
 
 echo "Validation:"
-for tool in "${installed_tools[@]}"; do
+for tool in "${installed_tools[@]}" "${already_installed_tools[@]}"; do
 	cmd_name="$(command_for_tool "$tool")"
 	if command -v "$cmd_name" >/dev/null 2>&1; then
 		echo "- ${tool}: ok (${cmd_name})"

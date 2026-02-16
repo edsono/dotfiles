@@ -2,6 +2,9 @@
 # Input / Keybindings
 #-------------
 
+# Force Emacs keybindings for command line editing (disable vi mode on ESC).
+bindkey -e
+
 # Habilita a busca no histórico com as setas para cima/para baixo
 autoload -Uz up-line-or-beginning-search
 autoload -Uz down-line-or-beginning-search
@@ -10,6 +13,10 @@ zle -N down-line-or-beginning-search
 
 bindkey '^[[A' up-line-or-beginning-search # Seta para cima
 bindkey '^[[B' down-line-or-beginning-search # Seta para baixo
+bindkey '^[[1;5D' backward-word            # Ctrl + Left
+bindkey '^[[1;5C' forward-word             # Ctrl + Right
+bindkey '^[[5D' backward-word              # Fallback comum
+bindkey '^[[5C' forward-word               # Fallback comum
 
 #-------------
 # History
