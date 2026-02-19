@@ -56,7 +56,12 @@ autoload -U compinit; compinit   # initializes the Zsh completion system
 export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 # You may need to manually set your language environment
-export LANG=en_US.UTF-8
+export LANG=pt_BR.UTF-8
+
+# Compose file for cedilha behavior (Linux only)
+if [[ "$(uname -s)" == "Linux" ]]; then
+  export XCOMPOSEFILE="$HOME/.XCompose"
+fi
 
 # Configure timezone
 export TZ=America/Manaus
