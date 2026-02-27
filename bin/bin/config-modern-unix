@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #/ Usage: config-modern-unix
-#/ Install modern Unix utilities and Starship on supported Linux distros.
+#/ Install modern Unix utilities, Zsh, and Starship on supported Linux distros.
 set -euo pipefail
 
 show_help() {
@@ -27,9 +27,20 @@ run_as_root() {
 	elif command -v sudo >/dev/null 2>&1; then
 		sudo "$@"
 	else
-		echo "Error: root privileges required (run as root or install sudo)." >&2
-		exit 1
+		echo "Warning: root privileges unavailable (not root and sudo missing)." >&2
+		return 1
 	fi
+}
+
+ensure_user_bin_path() {
+	mkdir -p "${HOME}/bin"
+	case ":${PATH}:" in
+	*:"${HOME}/bin":*)
+		;;
+	*)
+		export PATH="${HOME}/bin:${PATH}"
+		;;
+	esac
 }
 
 ensure_linux() {
@@ -98,7 +109,7 @@ install_pkg() {
 		;;
 	*)
 		echo "Error: unsupported family '$family'." >&2
-		exit 1
+		return 1
 		;;
 	esac
 }
@@ -115,6 +126,82 @@ command_for_tool() {
 	esac
 }
 
+nvim_version_string() {
+	if ! command -v nvim >/dev/null 2>&1; then
+		return 1
+	fi
+	nvim --version 2>/dev/null | sed -n '1s/^NVIM v\([0-9][0-9.]*\).*$/\1/p'
+}
+
+version_at_least() {
+	local actual="$1"
+	local minimum="$2"
+	local a_major a_minor a_patch m_major m_minor m_patch
+	local IFS=.
+
+	read -r a_major a_minor a_patch <<EOF
+$actual
+EOF
+	read -r m_major m_minor m_patch <<EOF
+$minimum
+EOF
+
+	a_major="${a_major:-0}"
+	a_minor="${a_minor:-0}"
+	a_patch="${a_patch:-0}"
+	m_major="${m_major:-0}"
+	m_minor="${m_minor:-0}"
+	m_patch="${m_patch:-0}"
+
+	if [ "$a_major" -gt "$m_major" ]; then
+		return 0
+	fi
+	if [ "$a_major" -lt "$m_major" ]; then
+		return 1
+	fi
+	if [ "$a_minor" -gt "$m_minor" ]; then
+		return 0
+	fi
+	if [ "$a_minor" -lt "$m_minor" ]; then
+		return 1
+	fi
+	[ "$a_patch" -ge "$m_patch" ]
+}
+
+nvim_version_is_supported() {
+	local ver
+	ver="$(nvim_version_string)" || return 1
+	[ -n "$ver" ] || return 1
+	version_at_least "$ver" "0.10.0"
+}
+
+tool_is_installed_and_acceptable() {
+	local tool="$1"
+	local cmd_name
+	cmd_name="$(command_for_tool "$tool")"
+
+	if ! command -v "$cmd_name" >/dev/null 2>&1; then
+		return 1
+	fi
+
+	if [ "$tool" = "neovim" ]; then
+		local ver
+		ver="$(nvim_version_string || true)"
+		if [ -n "$ver" ]; then
+			if nvim_version_is_supported; then
+				echo "Info: detected nvim ${ver} (supported)." >&2
+				return 0
+			fi
+			log_warn "detected nvim ${ver}, but >= 0.10.0 is required."
+			return 1
+		fi
+		log_warn "could not parse 'nvim --version'; treating Neovim as unsupported."
+		return 1
+	fi
+
+	return 0
+}
+
 install_starship_fallback() {
 	if command -v starship >/dev/null 2>&1; then
 		return 0
@@ -122,7 +209,362 @@ install_starship_fallback() {
 	curl -fsSL https://starship.rs/install.sh | sh -s -- -y
 }
 
+log_warn() {
+	echo "Warning: $*" >&2
+}
+
+ensure_starship_init_in_zshrc() {
+	local zshrc="${HOME}/.zshrc"
+	local starship_init='eval "$(starship init zsh)"'
+
+	command -v starship >/dev/null 2>&1 || return 0
+
+	if [ -f "${zshrc}" ] && grep -Fq 'starship init zsh' "${zshrc}"; then
+		return 0
+	fi
+
+	{
+		echo ""
+		echo "# Added by config-modern-unix"
+		echo 'if command -v starship >/dev/null 2>&1; then'
+		echo "  ${starship_init}"
+		echo "fi"
+	} >>"${zshrc}"
+}
+
+set_user_default_shell_to_zsh() {
+	local user_name shell_path current_shell
+	user_name="$(id -un)"
+	shell_path="$(command -v zsh || true)"
+
+	if [ -z "${shell_path}" ]; then
+		log_warn "zsh command not found; skipping default shell update."
+		return 0
+	fi
+
+	if ! grep -qxF "${shell_path}" /etc/shells 2>/dev/null; then
+		if ! run_as_root sh -lc "printf '%s\n' '${shell_path}' >> /etc/shells"; then
+			log_warn "could not add '${shell_path}' to /etc/shells; skipping chsh."
+			return 0
+		fi
+	fi
+
+	current_shell="$(getent passwd "${user_name}" | cut -d: -f7 || true)"
+	if [ "${current_shell}" = "${shell_path}" ]; then
+		return 0
+	fi
+
+	if chsh -s "${shell_path}" "${user_name}" >/dev/null 2>&1; then
+		return 0
+	fi
+
+	if run_as_root chsh -s "${shell_path}" "${user_name}" >/dev/null 2>&1; then
+		return 0
+	fi
+
+	if run_as_root usermod -s "${shell_path}" "${user_name}" >/dev/null 2>&1; then
+		return 0
+	fi
+
+	log_warn "failed to set default shell to '${shell_path}' for user '${user_name}'."
+}
+
+detect_arch() {
+	case "$(uname -m)" in
+	x86_64|amd64)
+		echo "x86_64"
+		;;
+	aarch64|arm64)
+		echo "aarch64"
+		;;
+	*)
+		echo ""
+		;;
+	esac
+}
+
+require_fallback_prereqs() {
+	local missing=0
+	local cmd
+	for cmd in curl tar mktemp grep sed gzip; do
+		if ! command -v "$cmd" >/dev/null 2>&1; then
+			log_warn "fallback requires '${cmd}', but it is not available."
+			missing=1
+		fi
+	done
+	return "$missing"
+}
+
+install_binary_to_user_bin() {
+	local src="$1"
+	local dest_name="$2"
+	install -m 0755 "$src" "${HOME}/bin/${dest_name}"
+}
+
+supports_curl_fallback() {
+	case "$1" in
+	lazygit|lsd|tldr|duf|dust|neovim)
+		return 0
+		;;
+	*)
+		return 1
+		;;
+	esac
+}
+
+github_api_get() {
+	local url="$1"
+	curl -fsSL \
+		-H "Accept: application/vnd.github+json" \
+		-H "User-Agent: config-modern-unix" \
+		"$url"
+}
+
+github_release_asset_patterns() {
+	local tool="$1"
+	local arch="$2"
+
+	case "${tool}:${arch}" in
+	lazygit:x86_64)
+		cat <<'EOF'
+linux_x86_64.tar.gz
+EOF
+		;;
+	lazygit:aarch64)
+		cat <<'EOF'
+linux_arm64.tar.gz
+EOF
+		;;
+	lsd:x86_64)
+		cat <<'EOF'
+x86_64-unknown-linux-gnu.tar.gz
+EOF
+		;;
+	lsd:aarch64)
+		cat <<'EOF'
+aarch64-unknown-linux-gnu.tar.gz
+EOF
+		;;
+	tldr:x86_64)
+		cat <<'EOF'
+tealdeer-linux-x86_64-musl
+tealdeer-linux-x86_64-gnu
+x86_64-unknown-linux-musl
+x86_64-unknown-linux-gnu
+EOF
+		;;
+	tldr:aarch64)
+		cat <<'EOF'
+tealdeer-linux-aarch64-musl
+tealdeer-linux-aarch64-gnu
+aarch64-unknown-linux-musl
+aarch64-unknown-linux-gnu
+EOF
+		;;
+	duf:x86_64)
+		cat <<'EOF'
+linux_x86_64.tar.gz
+linux_amd64.tar.gz
+EOF
+		;;
+	duf:aarch64)
+		cat <<'EOF'
+linux_arm64.tar.gz
+EOF
+		;;
+	dust:x86_64)
+		cat <<'EOF'
+x86_64-unknown-linux-gnu.tar.gz
+EOF
+		;;
+	dust:aarch64)
+		cat <<'EOF'
+aarch64-unknown-linux-gnu.tar.gz
+EOF
+		;;
+	neovim:x86_64)
+		cat <<'EOF'
+nvim-linux-x86_64.appimage
+EOF
+		;;
+	neovim:aarch64)
+		cat <<'EOF'
+nvim-linux-arm64.appimage
+EOF
+		;;
+	*)
+		return 1
+		;;
+	esac
+}
+
+github_latest_release_asset_url() {
+	local repo="$1"
+	local tool="$2"
+	local arch="$3"
+	local json urls url pattern
+
+	json="$(github_api_get "https://api.github.com/repos/${repo}/releases/latest")" || return 1
+	urls="$(printf '%s\n' "$json" | grep -oE '"browser_download_url":[[:space:]]*"[^"]+"' | sed -E 's/.*"([^"]+)"/\1/')" || true
+	[ -n "$urls" ] || return 1
+
+	while IFS= read -r pattern; do
+		[ -n "$pattern" ] || continue
+		while IFS= read -r url; do
+			case "$url" in
+			*"$pattern"*)
+				case "$url" in
+				*.sha256|*.sha256sum|*.sha512|*.checksums*|*.txt|*.asc|*.sig|*.zsync)
+					continue
+					;;
+				esac
+				printf '%s\n' "$url"
+				return 0
+				;;
+			esac
+		done <<EOF
+$urls
+EOF
+	done <<EOF
+$(github_release_asset_patterns "$tool" "$arch")
+EOF
+
+	return 1
+}
+
+download_release_asset() {
+	local url="$1"
+	local dest="$2"
+	curl -fsSL -H "User-Agent: config-modern-unix" -o "$dest" "$url"
+}
+
+extract_or_prepare_asset() {
+	local asset_path="$1"
+	local out_dir="$2"
+	local base
+
+	base="$(basename "$asset_path")"
+	mkdir -p "$out_dir"
+
+	case "$base" in
+	*.tar.gz|*.tgz)
+		tar -xzf "$asset_path" -C "$out_dir"
+		;;
+	*.tar.xz)
+		tar -xJf "$asset_path" -C "$out_dir"
+		;;
+	*.gz)
+		gzip -dc "$asset_path" >"${out_dir}/$(basename "${base%.gz}")"
+		;;
+	*)
+		cp "$asset_path" "${out_dir}/${base}"
+		;;
+	esac
+}
+
+find_extracted_binary() {
+	local dir="$1"
+	local bin_name="$2"
+	find "$dir" -type f -name "$bin_name" | head -n 1
+}
+
+install_github_release_binary() {
+	local repo="$1"
+	local tool="$2"
+	local extracted_bin_name="$3"
+	local dest_bin_name="$4"
+	local arch url tmpdir asset_path extract_dir found_bin
+
+	arch="$(detect_arch)"
+	if [ -z "$arch" ]; then
+		log_warn "unsupported CPU architecture for fallback: $(uname -m)"
+		return 1
+	fi
+
+	require_fallback_prereqs || return 1
+
+	url="$(github_latest_release_asset_url "$repo" "$tool" "$arch")" || {
+		log_warn "could not resolve latest release asset for ${tool} (${repo}, ${arch})."
+		return 1
+	}
+
+	tmpdir="$(mktemp -d)"
+	trap 'rm -rf -- "$tmpdir"' RETURN
+	asset_path="${tmpdir}/$(basename "$url")"
+	extract_dir="${tmpdir}/extract"
+
+	log_warn "package install failed for ${tool}; trying fallback via ${url}"
+	download_release_asset "$url" "$asset_path" || return 1
+	extract_or_prepare_asset "$asset_path" "$extract_dir" || return 1
+
+	found_bin="$(find_extracted_binary "$extract_dir" "$extracted_bin_name")"
+	if [ -z "$found_bin" ]; then
+		# Some assets are single binaries whose filename does not match the internal command name.
+		if [ -f "${extract_dir}/$(basename "$asset_path")" ]; then
+			found_bin="${extract_dir}/$(basename "$asset_path")"
+		else
+			log_warn "fallback asset for ${tool} did not contain expected binary '${extracted_bin_name}'."
+			return 1
+		fi
+	fi
+
+	install_binary_to_user_bin "$found_bin" "$dest_bin_name" || return 1
+	log_warn "installed ${tool} fallback to ${HOME}/bin/${dest_bin_name}"
+	trap - RETURN
+	rm -rf -- "$tmpdir"
+	return 0
+}
+
+install_fallback_lazygit() {
+	install_github_release_binary "jesseduffield/lazygit" "lazygit" "lazygit" "lazygit"
+}
+
+install_fallback_lsd() {
+	install_github_release_binary "lsd-rs/lsd" "lsd" "lsd" "lsd"
+}
+
+install_fallback_tldr() {
+	install_github_release_binary "tealdeer-rs/tealdeer" "tldr" "tealdeer" "tldr"
+}
+
+install_fallback_duf() {
+	install_github_release_binary "muesli/duf" "duf" "duf" "duf"
+}
+
+install_fallback_dust() {
+	install_github_release_binary "bootandy/dust" "dust" "dust" "dust"
+}
+
+install_fallback_neovim() {
+	local arch asset_name
+	arch="$(detect_arch)"
+	case "$arch" in
+	x86_64) asset_name="nvim-linux-x86_64.appimage" ;;
+	aarch64) asset_name="nvim-linux-arm64.appimage" ;;
+	*)
+		log_warn "unsupported CPU architecture for neovim fallback: $(uname -m)"
+		return 1
+		;;
+	esac
+	install_github_release_binary "neovim/neovim" "neovim" "$asset_name" "nvim"
+}
+
+install_tool_fallback() {
+	case "$1" in
+	lazygit) install_fallback_lazygit ;;
+	lsd) install_fallback_lsd ;;
+	tldr) install_fallback_tldr ;;
+	duf) install_fallback_duf ;;
+	dust) install_fallback_dust ;;
+	neovim) install_fallback_neovim ;;
+	*)
+		return 1
+		;;
+	esac
+}
+
 ensure_linux
+ensure_user_bin_path
 linux_family="$(detect_linux_family)"
 if [ -z "$linux_family" ]; then
 	# shellcheck disable=SC1091
@@ -137,10 +579,15 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 if [ "$linux_family" = "debian" ]; then
-	run_as_root apt-get update
+	if [ "$(id -u)" -eq 0 ] || command -v sudo >/dev/null 2>&1; then
+		run_as_root apt-get update
+	else
+		log_warn "skipping 'apt-get update' because root/sudo is unavailable."
+	fi
 fi
 
 tools=(
+	zsh
 	git
 	lazygit
 	bat
@@ -166,17 +613,38 @@ installed_tools=()
 already_installed_tools=()
 
 for tool in "${tools[@]}"; do
-	cmd_name="$(command_for_tool "$tool")"
-	if command -v "$cmd_name" >/dev/null 2>&1; then
+	if tool_is_installed_and_acceptable "$tool"; then
 		already_installed_tools+=("$tool")
 		continue
 	fi
 
 	pkg="$(package_for_tool "$linux_family" "$tool")"
 	if install_pkg "$linux_family" "$pkg"; then
-		installed_tools+=("$tool")
+		if [ "$tool" = "neovim" ] && ! nvim_version_is_supported; then
+			if command -v nvim >/dev/null 2>&1; then
+				log_warn "package-installed neovim version is still too old; trying fallback."
+			else
+				log_warn "package install for neovim succeeded but 'nvim' command is unavailable; trying fallback."
+			fi
+			if supports_curl_fallback "$tool" && install_tool_fallback "$tool" && nvim_version_is_supported; then
+				installed_tools+=("$tool")
+			else
+				failed_tools+=("$tool")
+			fi
+		else
+			installed_tools+=("$tool")
+		fi
 	else
-		failed_tools+=("$tool")
+		if supports_curl_fallback "$tool" && install_tool_fallback "$tool"; then
+			if [ "$tool" = "neovim" ] && ! nvim_version_is_supported; then
+				log_warn "neovim fallback installed but version validation failed."
+				failed_tools+=("$tool")
+			else
+				installed_tools+=("$tool")
+			fi
+		else
+			failed_tools+=("$tool")
+		fi
 	fi
 done
 
@@ -195,6 +663,9 @@ else
 		fi
 	fi
 fi
+
+ensure_starship_init_in_zshrc
+set_user_default_shell_to_zsh
 
 echo "Installed/updated tools:"
 for tool in "${installed_tools[@]}"; do
