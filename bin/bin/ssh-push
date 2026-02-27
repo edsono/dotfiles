@@ -98,6 +98,7 @@ sync_dotfiles_scp_fallback() {
 	ssh "${host}" 'mkdir -p ~/.dotfiles'
 	scp -r \
 		"${repo_root}/bin" \
+		"${repo_root}/codex" \
 		"${repo_root}/ghostty" \
 		"${repo_root}/git" \
 		"${repo_root}/nvim" \
@@ -121,6 +122,22 @@ sync_dotfiles() {
 	fi
 
 	sync_dotfiles_scp_fallback "${host}"
+}
+
+validate_remote_dotfiles_layout() {
+	local host="$1"
+
+	ssh "${host}" '
+		set -e
+		if [ ! -d ~/.dotfiles/codex/.codex/skills ]; then
+			echo "Error: missing ~/.dotfiles/codex/.codex/skills after sync." >&2
+			exit 1
+		fi
+		if [ ! -f ~/.dotfiles/codex/.codex/skills/commit-code/SKILL.md ]; then
+			echo "Error: Codex skills appear incomplete (commit-code missing)." >&2
+			exit 1
+		fi
+	'
 }
 
 ensure_remote_stow() {
@@ -216,6 +233,8 @@ for host in "${hosts[@]}"; do
 	push_key_to_host "${host}" "${public_key_file}"
 	log_step "Host ${host}: syncing dotfiles to ~/.dotfiles."
 	sync_dotfiles "${host}"
+	log_step "Host ${host}: validating synced dotfiles layout."
+	validate_remote_dotfiles_layout "${host}"
 
 	log_step "Host ${host}: ensuring stow is available."
 	if ensure_remote_stow "${host}"; then

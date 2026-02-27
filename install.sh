@@ -303,6 +303,27 @@ ensure_jetbrains_nerd_font() {
   fi
 }
 
+verify_codex_skills_sync() {
+  local skills_dir=""
+  local skills_count=0
+
+  skills_dir="${TARGET%/}/.codex/skills"
+  if [ ! -d "${skills_dir}" ]; then
+    echo "error: codex skills directory missing after stow: ${skills_dir}" >&2
+    return 1
+  fi
+
+  skills_count="$(
+    find -L "${skills_dir}" -mindepth 2 -maxdepth 2 -name SKILL.md -not -path '*/.system/*' | wc -l | tr -d '[:space:]'
+  )"
+  if [ "${skills_count}" -eq 0 ]; then
+    echo "error: no Codex skills found after stow in ${skills_dir}" >&2
+    return 1
+  fi
+
+  echo "Codex skills synced: ${skills_count} (excluding .system)."
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --target)
@@ -409,3 +430,7 @@ done
 
 stow "${STOW_FLAGS[@]}" "${non_codex_packages[@]}"
 stow --ignore="$CODEX_IGNORE_REGEX" "${STOW_FLAGS[@]}" "$CODEX_PACKAGE"
+
+if [ "$MODE" = "install" ] && [ "$DRY_RUN" -eq 0 ]; then
+  verify_codex_skills_sync
+fi

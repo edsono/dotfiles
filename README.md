@@ -107,3 +107,22 @@ Exemplos de override para Ghostty:
 O diretório `codex/.codex/skills/.system` permanece versionado no repositório,
 mas a instalação via `install.sh` ignora esse caminho no `stow` para preservar
 o conteúdo local existente em `~/.codex/skills/.system`.
+
+## Skills do Codex
+
+- Fonte de verdade: `codex/.codex/skills` neste repositório.
+- `install.sh` sincroniza essas skills para `~/.codex/skills` e valida o resultado.
+- `bin/bin/ssh-push` também sincroniza as skills para hosts remotos, inclusive no fallback sem `rsync`.
+- O caminho `~/.codex/skills/.system` local é preservado por padrão.
+
+Verificação local:
+
+```bash
+find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l
+```
+
+Verificação remota:
+
+```bash
+ssh <host> 'find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l'
+```

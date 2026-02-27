@@ -21,6 +21,7 @@ Co-Authored-By: Codex (GPT-5) <codex@openai.com>
 
 ## Key Conventions
 - Repo structure: top-level directories are GNU Stow packages linked into `$HOME`.
+- Codex skills source of truth: `codex/.codex/skills`; keep `~/.codex/skills/.system` local data preserved.
 - Shell scripts: use `#!/usr/bin/env bash` when bash features are required and keep `set -e`.
 - Quote variables and use explicit flags.
 - Lua formatting: `nvim/.config/nvim/stylua.toml` (indent 2, width 120).
