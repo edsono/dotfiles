@@ -23,7 +23,14 @@ Gerenciamento de configurações pessoais com [GNU Stow](https://www.gnu.org/sof
 
 ## Instalação
 
-Aplicar todos os pacotes no `$HOME`:
+Em uma máquina nova, sem nada clonado ainda (instala `git`/`stow` se
+faltarem, clona em `~/Code/dotfiles` e roda `./install.sh`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/edsono/dotfiles/main/bootstrap.sh | bash
+```
+
+Com o repositório já clonado, aplicar todos os pacotes no `$HOME`:
 
 ```bash
 ./install.sh
