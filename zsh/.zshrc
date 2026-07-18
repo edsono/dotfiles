@@ -417,3 +417,10 @@ fi
 if [ -r "$HOME/.zshrc-local" ]; then
   . "$HOME/.zshrc-local"
 fi
+
+. "$HOME/.local/bin/env"
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/home/edsono/.lmstudio/bin"
+# End of LM Studio CLI section
+
