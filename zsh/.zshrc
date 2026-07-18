@@ -172,13 +172,6 @@ fi
 
 
 #-------------
-# Zoxide (better cd)
-#-------------
-if command -v zoxide >/dev/null 2>&1; then
-  eval "$(zoxide init zsh)"
-fi
-
-#-------------
 # Java
 #-------------
 set_java_home() {
@@ -217,9 +210,8 @@ export PYTHONBREAKPOINT="pudb.set_trace"
 export PATH=$HOME/oracle:$PATH
 export DYLD_LIBRARY_PATH=$HOME/oracle:$DYLD_LIBRARY_PATH
 
-# MySQL
-export PATH=$PATH:/usr/local/mysql/bin
-export PATH="/opt/homebrew/opt/mysql@8.4/bin:$PATH"
+# MariaDB
+export PATH="/opt/homebrew/opt/mariadb@10.5/bin:$PATH"
 
 #-------------
 # Starship
@@ -348,6 +340,21 @@ alias zrc="nvim ~/.zshrc"
 alias stow='stow -t ~'
 alias cx='codex-profiles'
 
+codex() {
+  command codex --yolo --no-alt-screen --strict-config "$@"
+}
+
+claude() {
+  CLAUDE_CODE_SUBAGENT_MODEL="claude-sonnet-5" \
+  command claude --model opusplan --effort medium --dangerously-skip-permissions --remote-control "$@"
+}
+
+claude-sefaz() {
+  CLAUDE_CONFIG_DIR="$HOME/.claude-sefaz" \
+  CLAUDE_CODE_SUBAGENT_MODEL="claude-sonnet-5" \
+  command claude --model opusplan --effort medium --dangerously-skip-permissions --remote-control "$@"
+}
+
 #-------------
 # Modern Unix aliases (with fallback)
 #-------------
@@ -365,9 +372,6 @@ else
   alias l="ls"
   alias ll="ls -lh"
   alias la="ls -lha"
-fi
-if command -v z >/dev/null 2>&1; then
-  alias cd='z'
 fi
 if command -v bat >/dev/null 2>&1; then
   export BAT_THEME="Catppuccin Mocha"
@@ -418,9 +422,20 @@ if [ -r "$HOME/.zshrc-local" ]; then
   . "$HOME/.zshrc-local"
 fi
 
-. "$HOME/.local/bin/env"
+# uv env (when installed via standalone installer)
+if [ -r "$HOME/.local/bin/env" ]; then
+  . "$HOME/.local/bin/env"
+fi
 
-# Added by LM Studio CLI (lms)
-export PATH="$PATH:/home/edsono/.lmstudio/bin"
-# End of LM Studio CLI section
+# LM Studio CLI (lms)
+if [ -d "$HOME/.lmstudio/bin" ]; then
+  export PATH="$PATH:$HOME/.lmstudio/bin"
+fi
 
+#-------------
+# Zoxide (better cd) — keep last per upstream recommendation
+#-------------
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh)"
+  alias cd='z'
+fi
