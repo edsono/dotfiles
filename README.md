@@ -8,9 +8,11 @@ Gerenciamento de configurações pessoais com [GNU Stow](https://www.gnu.org/sof
 - `tmux`
 - `git`
 - `bin`
+- `vim`
 - `nvim`
 - `codex`
 - `ghostty`
+- `lazygit`
 
 ## Requisitos
 
@@ -80,7 +82,47 @@ Definir `zsh` como shell padrão de login:
 ## Uso manual do stow
 
 ```bash
-stow -t ~ zsh tmux git bin nvim codex ghostty
+stow -t ~ zsh tmux git bin vim nvim codex ghostty lazygit
+```
+
+## VPS com `ssh-vps`
+
+Para preparar uma VPS AlmaLinux/RHEL-like usando apenas `dnf` e aplicar um
+subset seguro dos dotfiles:
+
+```bash
+bin/bin/ssh-vps usuario@host
+```
+
+O script:
+
+- instala via `dnf` apenas: `stow`, `git`, `tmux`, `ripgrep`, `fd-find`,
+  `jq`, `fzf`, `htop`, `zsh`, `vim-enhanced`, `starship`, `zoxide`, `duf`
+  `procs`, `ncdu` e `rsync`
+- se `starship` não existir nos repositórios atuais, habilita via `dnf` o
+  COPR `atim/starship`
+- sincroniza apenas `zsh`, `git`, `tmux`, `bin` e `vim`
+- aborta se encontrar conflitos de `stow`
+- define `zsh` como shell padrão do usuário remoto
+- força `EDITOR=vim` e `VISUAL=vim` via `~/.zshrc-local`
+- deixa o prompt com `starship` através do `.zshrc` sincronizado
+
+Simular sem alterar nada:
+
+```bash
+bin/bin/ssh-vps --dry-run usuario@host
+```
+
+Usar uma chave pública específica:
+
+```bash
+bin/bin/ssh-vps --key ~/.ssh/id_ed25519.pub usuario@host
+```
+
+Trocar os grupos sincronizados:
+
+```bash
+bin/bin/ssh-vps --packages zsh,git,tmux,bin,vim usuario@host
 ```
 
 Remover um pacote específico:
@@ -94,6 +136,7 @@ stow -D -t ~ <pacote>
 Para configurações específicas de máquina/sistema, use arquivos locais:
 
 - Zsh: `~/.zshrc-local` (carregado no final de `~/.zshrc`)
+- Vim: `~/.vimrc-local` (carregado no final de `~/.vimrc`)
 - Ghostty Linux: `~/.config/ghostty/config.local`
 - Ghostty macOS: `~/Library/Application Support/com.mitchellh.ghostty/config.local`
 
