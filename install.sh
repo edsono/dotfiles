@@ -9,7 +9,7 @@ SKIP_FONT_INSTALL=0
 SKIP_ZSH_INSTALL=0
 SKIP_MODERN_UNIX_INSTALL=0
 SET_DEFAULT_SHELL=0
-PACKAGES=(zsh tmux git bin vim nvim codex ghostty lazygit)
+PACKAGES=(zsh tmux git bin vim nvim codex ghostty lazygit claude)
 CODEX_PACKAGE="codex"
 CODEX_IGNORE_REGEX='^\.codex/skills/\.system(/|$)'
 NERD_FONTS_JETBRAINS_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
@@ -303,6 +303,19 @@ ensure_jetbrains_nerd_font() {
   fi
 }
 
+ensure_claude_skills_link() {
+  local claude_dir="${TARGET%/}/.claude"
+  local link_path="${claude_dir}/skills"
+
+  mkdir -p "$claude_dir"
+  if [ -e "$link_path" ] && [ ! -L "$link_path" ]; then
+    echo "warning: ${link_path} exists and is not a symlink; leaving it alone." >&2
+    return 0
+  fi
+  ln -snf "../.agents/skills" "$link_path"
+  echo "Claude skills linked: ${link_path} -> ../.agents/skills"
+}
+
 verify_codex_skills_sync() {
   local skills_dir=""
   local skills_count=0
@@ -432,5 +445,6 @@ stow "${STOW_FLAGS[@]}" "${non_codex_packages[@]}"
 stow --ignore="$CODEX_IGNORE_REGEX" "${STOW_FLAGS[@]}" "$CODEX_PACKAGE"
 
 if [ "$MODE" = "install" ] && [ "$DRY_RUN" -eq 0 ]; then
+  ensure_claude_skills_link
   verify_codex_skills_sync
 fi

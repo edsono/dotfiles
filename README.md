@@ -13,6 +13,7 @@ Gerenciamento de configurações pessoais com [GNU Stow](https://www.gnu.org/sof
 - `codex`
 - `ghostty`
 - `lazygit`
+- `claude`
 
 ## Requisitos
 
@@ -82,7 +83,7 @@ Definir `zsh` como shell padrão de login:
 ## Uso manual do stow
 
 ```bash
-stow -t ~ zsh tmux git bin vim nvim codex ghostty lazygit
+stow -t ~ zsh tmux git bin vim nvim codex ghostty lazygit claude
 ```
 
 ## VPS com `ssh-vps`
