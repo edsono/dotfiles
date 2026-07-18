@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+*~
+
+# Vim
+*.swp
+.vim/swap
+.vim/sessions
+.vim/doc/tags
+.netrwhist
+
+# VS Code
+.vscode
+
+# Python
+*.py[cod]
+__pycache__
+.venv
+
+# Claude Code
+**/.claude/settings.local.json

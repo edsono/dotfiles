@@ -7,7 +7,6 @@
 	branch = auto
 	interactive = auto
 [core]
-  excludesfile = /Users/edson/.gitignore
 	editor = nvim
 	pager = delta
 	autocrlf = input
