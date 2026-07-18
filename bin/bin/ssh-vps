@@ -1,0 +1,367 @@
+#!/usr/bin/env bash
+#/ Usage: ssh-vps [options] <host> [host...]
+#/ Prepare a VPS with minimal tools via dnf and apply safe dotfiles with stow.
+set -euo pipefail
+
+show_help() {
+	grep '^#/' <"$0" | cut -c4-
+	cat <<'EOF'
+
+Options:
+  --key <pubkey>       Use an explicit local SSH public key
+  --packages <list>    Comma-separated dotfile groups (default: zsh,git,tmux,bin)
+  --dry-run            Show planned remote actions without changing state
+  --skip-key-push      Assume SSH key is already authorized on the remote host
+  -h, --help           Show this help
+EOF
+}
+
+log_step() {
+	local host="$1"
+	local message="$2"
+	printf '[%s] %s: %s\n' "$(date '+%H:%M:%S')" "$host" "$message"
+}
+
+die() {
+	echo "Error: $*" >&2
+	exit 1
+}
+
+ensure_local_prereqs() {
+	local cmd
+	for cmd in ssh scp; do
+		command -v "$cmd" >/dev/null 2>&1 || die "required command '$cmd' not found"
+	done
+}
+
+ensure_local_key() {
+	if [ -n "${PUBLIC_KEY_FILE:-}" ]; then
+		[ -f "$PUBLIC_KEY_FILE" ] || die "public key file not found: $PUBLIC_KEY_FILE"
+		echo "$PUBLIC_KEY_FILE"
+		return 0
+	fi
+
+	if [ -f "${HOME}/.ssh/id_ed25519.pub" ]; then
+		echo "${HOME}/.ssh/id_ed25519.pub"
+		return 0
+	fi
+
+	if [ -f "${HOME}/.ssh/id_rsa.pub" ]; then
+		echo "${HOME}/.ssh/id_rsa.pub"
+		return 0
+	fi
+
+	die "no local SSH public key found in ~/.ssh"
+}
+
+push_key_to_host() {
+	local host="$1"
+	local public_key_file="$2"
+
+	if command -v ssh-copy-id >/dev/null 2>&1; then
+		ssh-copy-id -i "$public_key_file" "$host"
+		return 0
+	fi
+
+	cat "$public_key_file" | ssh "$host" '
+		umask 077
+		mkdir -p ~/.ssh
+		touch ~/.ssh/authorized_keys
+		key="$(cat)"
+		if ! grep -qxF "${key}" ~/.ssh/authorized_keys; then
+			printf "%s\n" "${key}" >> ~/.ssh/authorized_keys
+		fi
+	'
+}
+
+package_args=()
+package_names=()
+
+sync_dotfiles_rsync() {
+	local host="$1"
+	rsync -az "${package_args[@]}" "${REPO_ROOT}/" "${host}:~/.dotfiles/"
+}
+
+sync_dotfiles_scp_fallback() {
+	local host="$1"
+	local pkg
+	ssh "$host" 'mkdir -p ~/.dotfiles'
+	for pkg in "${package_names[@]}"; do
+		scp -r "${REPO_ROOT}/${pkg}" "${host}:~/.dotfiles/"
+	done
+}
+
+sync_dotfiles() {
+	local host="$1"
+
+	if command -v rsync >/dev/null 2>&1; then
+		if sync_dotfiles_rsync "$host"; then
+			return 0
+		fi
+		echo "Warning: rsync failed for ${host}; falling back to scp." >&2
+	fi
+
+	sync_dotfiles_scp_fallback "$host"
+}
+
+build_package_args() {
+	local IFS=','
+	local pkg
+	local raw_packages=($PACKAGES_CSV)
+
+	package_args=(
+		"--exclude=.git/"
+		"--exclude=codex/"
+		"--exclude=ghostty/"
+		"--exclude=nvim/"
+		"--exclude=lazygit/"
+		"--exclude=README.md"
+		"--exclude=LICENSE"
+		"--exclude=AGENTS.md"
+		"--exclude=install.sh"
+	)
+	package_names=()
+
+	for pkg in "${raw_packages[@]}"; do
+		pkg="${pkg#"${pkg%%[![:space:]]*}"}"
+		pkg="${pkg%"${pkg##*[![:space:]]}"}"
+		[ -n "$pkg" ] || continue
+		[ -d "${REPO_ROOT}/${pkg}" ] || die "unknown dotfile package: ${pkg}"
+		package_args+=("--include=${pkg}/" "--include=${pkg}/**")
+		package_names+=("$pkg")
+	done
+
+	[ "${#package_names[@]}" -gt 0 ] || die "no dotfile packages selected"
+	package_args+=("--exclude=*")
+}
+
+join_by_space() {
+	local IFS=' '
+	echo "$*"
+}
+
+REMOTE_HELPERS='
+set -euo pipefail
+run_as_root() {
+	if [ "$(id -u)" -eq 0 ]; then
+		"$@"
+	elif command -v sudo >/dev/null 2>&1; then
+		sudo -n "$@"
+	else
+		return 1
+	fi
+}
+remote_user_name() {
+	id -un
+}
+remote_user_home() {
+	getent passwd "$(remote_user_name)" | cut -d: -f6
+}
+ensure_dnf() {
+	command -v dnf >/dev/null 2>&1 || {
+		echo "ERROR: dnf not found on remote host" >&2
+		exit 1
+	}
+}
+package_available() {
+	dnf -q list --available "$1" >/dev/null 2>&1
+}
+ensure_starship_repo() {
+	if rpm -q starship >/dev/null 2>&1; then
+		return 0
+	fi
+	if package_available starship; then
+		return 0
+	fi
+	ensure_packages dnf-plugins-core
+	run_as_root dnf -y copr enable atim/starship
+}
+ensure_packages() {
+	local missing=()
+	local pkg
+	for pkg in "$@"; do
+		rpm -q "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
+	done
+	if [ "${#missing[@]}" -eq 0 ]; then
+		return 0
+	fi
+	run_as_root dnf -y install "${missing[@]}"
+}
+ensure_remote_stow_conflicts() {
+	local packages="$1"
+	local output=""
+	cd ~/.dotfiles
+	output="$(stow -n -v -t ~ ${packages} 2>&1 || true)"
+	printf "%s\n" "$output"
+}
+apply_remote_stow() {
+	local packages="$1"
+	cd ~/.dotfiles
+	stow -t ~ ${packages}
+}
+ensure_starship_init() {
+	local user_home zshrc_local marker_start marker_end
+	user_home="$(remote_user_home)"
+	zshrc_local="${user_home}/.zshrc-local"
+	marker_start="# >>> ssh-vps >>>"
+	marker_end="# <<< ssh-vps <<<"
+	touch "$zshrc_local"
+	awk -v begin="$marker_start" -v end="$marker_end" '"'"'
+		$0 == begin {inside=1; next}
+		$0 == end {inside=0; next}
+		!inside {print}
+	'"'"' "$zshrc_local" > "${zshrc_local}.tmp"
+	{
+		printf "%s\n" "$marker_start"
+		printf "%s\n" "export EDITOR=vim"
+		printf "%s\n" "export VISUAL=vim"
+		printf "%s\n" "$marker_end"
+	} >> "${zshrc_local}.tmp"
+	mv "${zshrc_local}.tmp" "$zshrc_local"
+}
+ensure_default_shell_zsh() {
+	local user_name zsh_path current_shell
+	user_name="$(remote_user_name)"
+	zsh_path="$(command -v zsh || true)"
+	[ -n "$zsh_path" ] || {
+		echo "ERROR: zsh not found after package install" >&2
+		exit 1
+	}
+	if ! grep -qxF "$zsh_path" /etc/shells 2>/dev/null; then
+		run_as_root sh -lc "printf \"%s\n\" \"$zsh_path\" >> /etc/shells"
+	fi
+	current_shell="$(getent passwd "$user_name" | cut -d: -f7 || true)"
+	[ "$current_shell" = "$zsh_path" ] && return 0
+	if chsh -s "$zsh_path" "$user_name" >/dev/null 2>&1; then
+		return 0
+	fi
+	if run_as_root chsh -s "$zsh_path" "$user_name" >/dev/null 2>&1; then
+		return 0
+	fi
+	run_as_root usermod -s "$zsh_path" "$user_name"
+}
+'
+
+remote_run() {
+	local host="$1"
+	local script="$2"
+	ssh "$host" "bash -s" <<EOF
+${REMOTE_HELPERS}
+${script}
+EOF
+}
+
+DRY_RUN=0
+SKIP_KEY_PUSH=0
+PACKAGES_CSV="zsh,git,tmux,bin,vim"
+PUBLIC_KEY_FILE=""
+hosts=()
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--key)
+		shift
+		[ $# -gt 0 ] || die "--key requires a file path"
+		PUBLIC_KEY_FILE="$1"
+		;;
+	--packages)
+		shift
+		[ $# -gt 0 ] || die "--packages requires a value"
+		PACKAGES_CSV="$1"
+		;;
+	--dry-run)
+		DRY_RUN=1
+		;;
+	--skip-key-push)
+		SKIP_KEY_PUSH=1
+		;;
+	-h|--help)
+		show_help
+		exit 0
+		;;
+	*)
+		hosts+=("$1")
+		;;
+	esac
+	shift
+done
+
+[ "${#hosts[@]}" -gt 0 ] || {
+	show_help
+	exit 2
+}
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+ensure_local_prereqs
+PUBLIC_KEY_FILE="$(ensure_local_key)"
+build_package_args
+packages_space="$(join_by_space "${package_names[@]}")"
+
+for host in "${hosts[@]}"; do
+	log_step "$host" "start"
+
+	if [ "$SKIP_KEY_PUSH" -eq 0 ]; then
+		if [ "$DRY_RUN" -eq 1 ]; then
+			log_step "$host" "dry-run: would push SSH key ${PUBLIC_KEY_FILE}"
+		else
+			log_step "$host" "pushing SSH key"
+			push_key_to_host "$host" "$PUBLIC_KEY_FILE"
+		fi
+	fi
+
+	if [ "$DRY_RUN" -eq 1 ]; then
+		log_step "$host" "dry-run: would verify dnf and install minimal tools"
+	else
+		log_step "$host" "installing minimal tools with dnf"
+		remote_run "$host" "
+ensure_dnf
+ensure_starship_repo
+ensure_packages stow git tmux ripgrep fd-find jq fzf htop zsh vim-enhanced starship zoxide duf procs ncdu rsync
+"
+	fi
+
+	if [ "$DRY_RUN" -eq 1 ]; then
+		log_step "$host" "dry-run: would sync ~/.dotfiles subset (${PACKAGES_CSV})"
+	else
+		log_step "$host" "syncing dotfiles subset (${PACKAGES_CSV})"
+		sync_dotfiles "$host"
+	fi
+
+	log_step "$host" "checking stow conflicts"
+	conflicts_output="$(remote_run "$host" "
+command -v stow >/dev/null 2>&1 || {
+	echo \"__SSH_VPS_NO_STOW__\"
+	exit 0
+}
+ensure_remote_stow_conflicts '$packages_space'
+")"
+	if printf '%s\n' "$conflicts_output" | grep -qx '__SSH_VPS_NO_STOW__'; then
+		if [ "$DRY_RUN" -eq 1 ]; then
+			log_step "$host" "dry-run: stow ausente no host atual; conflito será verificável após a instalação real"
+		else
+			die "stow not found on remote host after install step: ${host}"
+		fi
+	else
+
+		conflict_paths="$(printf '%s\n' "$conflicts_output" | sed -nE 's/.* over existing target (.*) since .*/\1/p' | sort -u)"
+		if [ -n "$conflict_paths" ]; then
+			echo "Conflicts detected on ${host}:" >&2
+			printf '%s\n' "$conflict_paths" >&2
+			exit 2
+		fi
+	fi
+
+	if [ "$DRY_RUN" -eq 1 ]; then
+		log_step "$host" "dry-run: would apply stow, set zsh shell, set vim editor and starship init"
+		log_step "$host" "done"
+		continue
+	fi
+
+	log_step "$host" "applying stow"
+	remote_run "$host" "
+apply_remote_stow '$packages_space'
+ensure_starship_init
+ensure_default_shell_zsh
+"
+	log_step "$host" "done"
+done
