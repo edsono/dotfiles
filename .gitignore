@@ -1,1 +1,10 @@
 nvim/.config/nvim/lazy-lock.json
+
+# Local shell overrides (sourced from ~/.zshrc, kept out of the repo)
+.zshrc-local
+*.zshrc-local
+
+# Per-machine Ghostty overrides (~/.config/ghostty is a symlink into this repo,
+# so local files land here physically)
+ghostty/.config/ghostty/config.local
+ghostty/Library/Application Support/com.mitchellh.ghostty/config.local

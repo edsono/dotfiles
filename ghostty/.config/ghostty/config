@@ -7,6 +7,7 @@ theme = Synthwave
 shell-integration-features = cursor,no-sudo,title
 font-family = JetBrainsMono Nerd Font Mono
 font-size = 10
+macos-option-as-alt = true
 
 # Local overrides (optional).
 # Use this for Omarchy integration, keybinds, window tuning, etc.
