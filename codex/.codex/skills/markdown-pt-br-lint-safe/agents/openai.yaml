@@ -1,0 +1,4 @@
+interface:
+  display_name: "Markdown PT-BR"
+  short_description: "Escreve Markdown compatível com lint"
+  default_prompt: "Use $markdown-pt-br-lint-safe para escrever ou revisar um arquivo Markdown em português do Brasil compatível com markdownlint."

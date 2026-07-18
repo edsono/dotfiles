@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spec PT-BR"
+  short_description: "Escreve specs em português BR"
+  default_prompt: "Use $spec-pt-br para redigir uma spec técnica em português do Brasil."
