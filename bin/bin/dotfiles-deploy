@@ -97,7 +97,7 @@ git -C "$repo" pull --ff-only origin "$DOTFILES_REPO_BRANCH"
   echo "Error: deployed commit does not match the local published commit." >&2
   exit 1
 }
-stow -R -d "$repo" -t "$HOME" $DOTFILES_PACKAGES
+stow -d "$repo" -t "$HOME" $DOTFILES_PACKAGES
 if command -v bat >/dev/null 2>&1; then
   bat cache --build
 fi
