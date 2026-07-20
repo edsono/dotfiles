@@ -74,9 +74,15 @@
 [delta]
   navigate = true    # use n and N to move between diff sections
   side-by-side = true
-  syntax-theme = Coldark-Dark
-  # delta detects terminal colors automatically; set one of these to disable auto-detection
-  # dark = true
-  # light = true
+  # noturno: ~/Code/Pessoal/Noturno (fundos de diff = accent 14%/32% + #070710)
+  syntax-theme = noturno
+  dark = true
+  plus-style = syntax "#1e2526"
+  plus-emph-style = syntax "#3c4b41"
+  minus-style = syntax "#261c26"
+  minus-emph-style = syntax "#4e3643"
+  line-numbers-plus-style = "#aedaaa"
+  line-numbers-minus-style = "#e49aae"
+  line-numbers-zero-style = "#727480"
 [init]
 	defaultBranch = master

@@ -9,7 +9,7 @@ SKIP_FONT_INSTALL=0
 SKIP_ZSH_INSTALL=0
 SKIP_MODERN_UNIX_INSTALL=0
 SET_DEFAULT_SHELL=0
-PACKAGES=(zsh tmux git bin vim nvim codex ghostty lazygit claude)
+PACKAGES=(zsh tmux git bin vim nvim codex ghostty lazygit claude bat)
 CODEX_PACKAGE="codex"
 CODEX_IGNORE_REGEX='^\.codex/skills/\.system(/|$)'
 NERD_FONTS_JETBRAINS_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
@@ -445,6 +445,9 @@ stow "${STOW_FLAGS[@]}" "${non_codex_packages[@]}"
 stow --ignore="$CODEX_IGNORE_REGEX" "${STOW_FLAGS[@]}" "$CODEX_PACKAGE"
 
 if [ "$MODE" = "install" ] && [ "$DRY_RUN" -eq 0 ]; then
+  if command -v bat >/dev/null 2>&1; then
+    bat cache --build
+  fi
   ensure_claude_skills_link
   verify_codex_skills_sync
 fi

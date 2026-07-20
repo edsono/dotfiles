@@ -1,0 +1,45 @@
+# noturno — tema para Ghostty
+# Gerado do contrato: ~/Code/Pessoal/Noturno/docs/paletas.md
+# Fundo fixo #070710; accents da encarnação própria (matizes
+# catppuccin com a calma do nord).
+
+background = #070710
+foreground = #d7d9e1
+
+cursor-color = #f3e1de
+cursor-text = #070710
+
+selection-background = #2a2a3a
+selection-foreground = #ebecf2
+
+# black: superfície / cinza (texto secundário)
+palette = 0=#1a1a26
+palette = 8=#727480
+
+# red: vermelho (erros, diff -)
+palette = 1=#e49aae
+palette = 9=#e49aae
+
+# green: verde (sucesso, diff +)
+palette = 2=#a8e0a2
+palette = 10=#a8e0a2
+
+# yellow: amarelo (avisos, branch)
+palette = 3=#f1dfb7
+palette = 11=#f1dfb7
+
+# blue: azul-forte (links, diretórios)
+palette = 4=#8fb2e4
+palette = 12=#8fb2e4
+
+# magenta: lilás (destaques, hashes)
+palette = 5=#b48ead
+palette = 13=#b48ead
+
+# cyan: verde-água (símbolos)
+palette = 6=#9ecdc5
+palette = 14=#9ecdc5
+
+# white: branco / branco+
+palette = 7=#d7d9e1
+palette = 15=#ebecf2

@@ -14,6 +14,7 @@ Gerenciamento de configurações pessoais com [GNU Stow](https://www.gnu.org/sof
 - `ghostty`
 - `lazygit`
 - `claude`
+- `bat`
 
 ## Requisitos
 

@@ -3,7 +3,7 @@
 # Put machine/system-specific settings in:
 #   ~/.config/ghostty/config.local
 
-theme = Synthwave
+theme = noturno
 shell-integration-features = cursor,no-sudo,title
 font-family = JetBrainsMono Nerd Font Mono
 font-size = 10
