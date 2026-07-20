@@ -24,7 +24,7 @@ success_symbol = "[❯](bold green)"
 [hostname]
 ssh_only = true
 format = "[󰌘 $hostname ]($style)"
-style = "bold #2563EB"
+style = "bold #8FB2E4"
 
 [directory]
 truncation_length = 3
