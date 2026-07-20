@@ -20,17 +20,28 @@ if [ -r "$CACHE_FILE" ]; then
   done < "$CACHE_FILE"
 fi
 
-color=""
-dim=""
+logo_color=""
+data_color=""
+heading_color=""
+yellow=""
+red=""
 reset=""
-if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-  color=$'\033[1;36m'
-  dim=$'\033[2m'
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
+  data_color=$'\033[38;5;252m'
+  heading_color=$'\033[1;37m'
+  yellow=$'\033[1;33m'
+  red=$'\033[1;31m'
   reset=$'\033[0m'
 fi
 
 hostname="$(hostname -f 2>/dev/null || hostname)"
-os_name="$(. /etc/os-release 2>/dev/null && printf '%s' "${PRETTY_NAME:-Linux}")"
+os_id="linux"
+os_name="Linux"
+if [ -r /etc/os-release ]; then
+  . /etc/os-release
+  os_id="${ID:-linux}"
+  os_name="${PRETTY_NAME:-Linux}"
+fi
 kernel="$(uname -r)"
 uptime_text="$(uptime -p 2>/dev/null || true)"
 uptime_text="${uptime_text#up }"
@@ -64,30 +75,103 @@ if [ -z "$ip_address" ]; then
 fi
 ip_address="${ip_address:-indisponível}"
 
-updates="indisponível"
+cache_is_old=0
+updates="indisponíveis"
 if [[ "$count" =~ ^[0-9]+$ ]]; then
   updates="$count"
   now="$(date +%s)"
   if [[ "$generated_at" =~ ^[0-9]+$ ]] &&
     [ $((now - generated_at)) -gt "$CACHE_TTL" ]; then
-    updates="${updates} (cache antigo)"
-  elif [ "$status" != "ok" ]; then
-    updates="${updates} (cache com erro)"
+    cache_is_old=1
   fi
 fi
 
-failed_units="$(
+failed_unit_names="$(
   systemctl --failed --no-legend --plain 2>/dev/null |
-    awk 'NF { count++ } END { print count + 0 }'
-)" || failed_units="indisponível"
+    awk 'NF { names = names (names ? ", " : "") $1 } END { print names }'
+)" || failed_unit_names=""
 
-printf '%s%s%s\n' "$color" "$hostname" "$reset"
-printf '  %sSistema:%s %s · kernel %s\n' "$dim" "$reset" "$os_name" "$kernel"
-printf '  %sAtividade:%s há %s · carga %s\n' \
-  "$dim" "$reset" "${uptime_text:-indisponível}" "$load"
-printf '  %sRecursos:%s memória %s/%s MiB (%s%%) · disco %s/%s (%s)\n' \
-  "$dim" "$reset" "$memory_used_mib" "$memory_total_mib" "$memory_percent" \
-  "$disk_used" "$disk_total" "$disk_percent"
-printf '  %sRede:%s %s\n' "$dim" "$reset" "$ip_address"
-printf '  %sEstado:%s atualizações %s · reinício %s · serviços falhos %s\n\n' \
-  "$dim" "$reset" "$updates" "$reboot_required" "$failed_units"
+case "$os_id" in
+  almalinux)
+    if [ -n "$reset" ]; then
+      logo_color=$'\033[38;5;33m'
+    fi
+    logo=(
+      "       #####   "
+      "      #######  "
+      "      ##O#O##  "
+      "      #######  "
+      "    ###########"
+      "   ############"
+      "  #############"
+      "   ########### "
+    )
+    ;;
+  *)
+    if [ -n "$reset" ]; then
+      logo_color=$'\033[1;36m'
+    fi
+    logo=(
+      "      .--.     "
+      "     |o_o |    "
+      "     |:_/ |    "
+      "    //   \\ \\   "
+      "   (|     | )  "
+      "  /\\_   _/\\   "
+      "  \\___)=(___/  "
+      "     Linux     "
+    )
+    ;;
+esac
+
+details=(
+  "${heading_color}${hostname}${reset}"
+  "${data_color}${os_name}${reset}"
+  "${data_color}Kernel ${kernel}${reset}"
+  "${data_color}Há ${uptime_text:-indisponível} · carga ${load}${reset}"
+  "${data_color}Memória ${memory_used_mib}/${memory_total_mib} MiB (${memory_percent}%)${reset}"
+  "${data_color}Disco ${disk_used}/${disk_total} (${disk_percent})${reset}"
+  "${data_color}IP ${ip_address}${reset}"
+  "${data_color}Atualizações ${updates}${reset}"
+)
+
+terminal_columns="${COLUMNS:-}"
+if ! [[ "$terminal_columns" =~ ^[0-9]+$ ]]; then
+  terminal_columns="$(tput cols 2>/dev/null || echo 80)"
+fi
+
+if [ "$terminal_columns" -ge 80 ]; then
+  for index in "${!logo[@]}"; do
+    printf '%s%s%s  %b\n' \
+      "$logo_color" "${logo[$index]}" "$reset" "${details[$index]}"
+  done
+else
+  printf '%s%s%s\n' "$heading_color" "$hostname" "$reset"
+  printf '  %s%s · kernel %s%s\n' "$data_color" "$os_name" "$kernel" "$reset"
+  printf '  %sHá %s · carga %s%s\n' \
+    "$data_color" "${uptime_text:-indisponível}" "$load" "$reset"
+  printf '  %sMemória %s/%s MiB (%s%%) · disco %s/%s (%s)%s\n' \
+    "$data_color" "$memory_used_mib" "$memory_total_mib" "$memory_percent" \
+    "$disk_used" "$disk_total" "$disk_percent" "$reset"
+  printf '  %sIP %s · atualizações %s%s\n' \
+    "$data_color" "$ip_address" "$updates" "$reset"
+fi
+
+if [ "$status" != "ok" ]; then
+  printf '%s! Não foi possível atualizar o cache de pacotes.%s\n' "$red" "$reset"
+elif [ "$cache_is_old" -eq 1 ]; then
+  printf '%s! O cache de atualizações está antigo.%s\n' "$yellow" "$reset"
+elif [[ "$count" =~ ^[0-9]+$ ]] && [ "$count" -gt 0 ]; then
+  printf '%s! %s atualizações disponíveis.%s\n' "$yellow" "$count" "$reset"
+fi
+
+if [ "$reboot_required" = "sim" ]; then
+  printf '%s! Reinício necessário.%s\n' "$red" "$reset"
+fi
+
+if [ -n "$failed_unit_names" ]; then
+  printf '%s! Serviços falhos: %s.%s\n' \
+    "$red" "$failed_unit_names" "$reset"
+fi
+
+printf '\n'

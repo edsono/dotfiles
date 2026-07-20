@@ -181,10 +181,13 @@ O banner separa as informações em duas partes:
 - `/etc/motd` mantém a lista completa da última transação aplicada pelo
   `dnf-automatic`
 
-- um bloco compacto mostra host, sistema, atividade, recursos, rede,
-  atualizações pendentes, reinício necessário e serviços falhos
+- um bloco adaptável mostra o logo da distribuição ao lado dos dados
+  essenciais e usa um formato textual em terminais estreitos
 
-O bloco compacto aparece apenas em sessões SSH interativas. A consulta ao DNF
+- alertas sobre atualizações, reinício e serviços falhos aparecem abaixo do
+  bloco somente quando exigem atenção
+
+O banner aparece apenas em sessões SSH interativas. A consulta ao DNF
 fica em cache e é atualizada diariamente por um timer persistente, por volta
 das 07:30.
 
