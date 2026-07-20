@@ -25,6 +25,7 @@ heading_color=""
 label_color=""
 value_color=""
 distro_color=""
+muted_color=""
 yellow=""
 red=""
 reset=""
@@ -33,6 +34,7 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
   label_color=$'\033[1;38;5;39m'
   value_color=$'\033[38;5;255m'
   distro_color=$'\033[1;38;5;45m'
+  muted_color=$'\033[38;5;245m'
   yellow=$'\033[1;33m'
   red=$'\033[1;31m'
   reset=$'\033[0m'
@@ -95,6 +97,52 @@ failed_unit_names="$(
     awk 'NF { names = names (names ? ", " : "") $1 } END { print names }'
 )" || failed_unit_names=""
 
+format_duration() {
+  local remaining="$1"
+  local days
+  local hours
+  local minutes
+
+  if [ "$remaining" -le 0 ]; then
+    echo "agora"
+  elif [ "$remaining" -lt 3600 ]; then
+    minutes=$(((remaining + 59) / 60))
+    printf '%s min\n' "$minutes"
+  elif [ "$remaining" -lt 172800 ]; then
+    hours=$((remaining / 3600))
+    printf '%sh\n' "$hours"
+  else
+    days=$((remaining / 86400))
+    hours=$(((remaining % 86400) / 3600))
+    printf '%sd %sh\n' "$days" "$hours"
+  fi
+}
+
+next_timer_duration() {
+  local timer="$1"
+  local next_run
+  local next_epoch
+  local now
+
+  next_run="$(
+    systemctl show "$timer" \
+      --property=NextElapseUSecRealtime --value 2>/dev/null
+  )" || true
+  [ -n "$next_run" ] || {
+    echo "indisponível"
+    return
+  }
+  next_epoch="$(date -d "$next_run" +%s 2>/dev/null)" || {
+    echo "indisponível"
+    return
+  }
+  now="$(date +%s)"
+  format_duration "$((next_epoch - now))"
+}
+
+update_timer="$(next_timer_duration dnf-automatic.timer)"
+reboot_timer="$(next_timer_duration dotfiles-reboot-if-required.timer)"
+
 case "$os_id" in
   almalinux)
     if [ -n "$reset" ]; then
@@ -136,7 +184,7 @@ details=(
   "${label_color}Carga${reset} ${value_color}${load}${reset}"
   "${label_color}Memória${reset} ${value_color}${memory_used_mib}/${memory_total_mib} MiB (${memory_percent}%)${reset}"
   "${label_color}Disco${reset} ${value_color}${disk_used}/${disk_total} (${disk_percent})${reset}"
-  "${label_color}IP${reset} ${value_color}${ip_address}${reset} · ${label_color}Atualizações${reset} ${value_color}${updates}${reset}"
+  "${label_color}IP${reset} ${value_color}${ip_address}${reset} · ${label_color}Atualizações pendentes${reset} ${value_color}${updates}${reset}"
 )
 
 terminal_columns="${COLUMNS:-}"
@@ -164,28 +212,37 @@ else
     "$label_color" "$reset" "$value_color" "$memory_used_mib" \
     "$memory_total_mib" "$memory_percent" "$reset" "$label_color" "$reset" \
     "$value_color" "$disk_used" "$disk_total" "$disk_percent" "$reset"
-  printf '  %sIP%s %s%s%s · %sAtualizações%s %s%s%s\n' \
+  printf '  %sIP%s %s%s%s · %sAtualizações pendentes%s %s%s%s\n' \
     "$label_color" "$reset" "$value_color" "$ip_address" "$reset" \
     "$label_color" "$reset" "$value_color" "$updates" "$reset"
 fi
 
 warning_messages=()
+warning_commands=()
 critical_messages=()
+critical_commands=()
 
 if [ "$status" != "ok" ]; then
   critical_messages+=("Não foi possível atualizar o cache de pacotes.")
+  critical_commands+=("sudo systemctl restart dotfiles-ssh-banner-cache.service")
 elif [ "$cache_is_old" -eq 1 ]; then
   warning_messages+=("O cache de atualizações está antigo.")
+  warning_commands+=("sudo systemctl restart dotfiles-ssh-banner-cache.service")
 elif [[ "$count" =~ ^[0-9]+$ ]] && [ "$count" -gt 0 ]; then
-  warning_messages+=("${count} atualizações disponíveis.")
+  warning_messages+=("${count} atualizações pendentes.")
+  warning_commands+=("sudo dnf upgrade --refresh -y")
 fi
 
 if [ "$reboot_required" = "sim" ]; then
   critical_messages+=("Reinício necessário.")
+  critical_commands+=("sudo systemctl reboot")
 fi
 
 if [ -n "$failed_unit_names" ]; then
   critical_messages+=("Serviços falhos: ${failed_unit_names}.")
+  critical_commands+=(
+    "systemctl status ${failed_unit_names//,/} --no-pager"
+  )
 fi
 
 if [ "$terminal_columns" -ge 80 ]; then
@@ -194,14 +251,30 @@ else
   alert_indent="  "
 fi
 
+if [ "$terminal_columns" -ge 80 ]; then
+  printf '%s%sAutomação%s  %satualizações em %s%s%s%s · reinício em %s%s%s\n' \
+    "$alert_indent" "$label_color" "$reset" "$value_color" \
+    "$muted_color" "$update_timer" "$reset" "$value_color" \
+    "$muted_color" "$reboot_timer" "$reset"
+else
+  printf '%s%sAutomação%s  %satualizações em %s%s%s\n' \
+    "$alert_indent" "$label_color" "$reset" "$value_color" \
+    "$muted_color" "$update_timer" "$reset"
+  printf '%s           %sreinício em %s%s%s\n' \
+    "$alert_indent" "$value_color" "$muted_color" "$reboot_timer" "$reset"
+fi
+
 if [ "${#warning_messages[@]}" -gt 0 ] ||
   [ "${#critical_messages[@]}" -gt 0 ]; then
   printf '\n'
 fi
 
-for message in "${warning_messages[@]}"; do
+for index in "${!warning_messages[@]}"; do
   printf '%s%s%-2s %s%s\n' \
-    "$alert_indent" "$yellow" "!" "$message" "$reset"
+    "$alert_indent" "$yellow" "!" "${warning_messages[$index]}" "$reset"
+  printf '%s   %s$%s %s%s%s\n' \
+    "$alert_indent" "$label_color" "$reset" "$muted_color" \
+    "${warning_commands[$index]}" "$reset"
 done
 
 if [ "${#warning_messages[@]}" -gt 0 ] &&
@@ -209,9 +282,12 @@ if [ "${#warning_messages[@]}" -gt 0 ] &&
   printf '\n'
 fi
 
-for message in "${critical_messages[@]}"; do
+for index in "${!critical_messages[@]}"; do
   printf '%s%s%-2s %s%s\n' \
-    "$alert_indent" "$red" "!!" "$message" "$reset"
+    "$alert_indent" "$red" "!!" "${critical_messages[$index]}" "$reset"
+  printf '%s   %s$%s %s%s%s\n' \
+    "$alert_indent" "$label_color" "$reset" "$muted_color" \
+    "${critical_commands[$index]}" "$reset"
 done
 
 printf '\n'

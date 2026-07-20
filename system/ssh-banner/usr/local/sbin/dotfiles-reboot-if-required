@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CHECK_ONLY=0
+case "${1:-}" in
+  "") ;;
+  --check) CHECK_ONLY=1 ;;
+  *)
+    echo "Uso: dotfiles-reboot-if-required [--check]" >&2
+    exit 2
+    ;;
+esac
+
+if needs-restarting -r >/dev/null 2>&1; then
+  [ "$CHECK_ONLY" -eq 0 ] || echo "Reinício não necessário."
+  exit 0
+fi
+
+if [ "$CHECK_ONLY" -eq 1 ]; then
+  echo "Reinício necessário."
+  exit 0
+fi
+
+systemctl reboot

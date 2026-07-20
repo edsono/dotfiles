@@ -1,0 +1,7 @@
+[Unit]
+Description=Reinicia o sistema quando uma atualização exigir
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dotfiles-reboot-if-required

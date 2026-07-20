@@ -191,6 +191,11 @@ O banner aparece apenas em sessões SSH interativas. A consulta ao DNF
 fica em cache e é atualizada diariamente por um timer persistente, por volta
 das 07:30.
 
+Todas as atualizações são instaladas automaticamente pelo `dnf-automatic`.
+Quando necessário, o servidor reinicia na segunda-feira, às 01h. O banner
+mostra o tempo até as próximas execuções e comandos opcionais para antecipar
+cada ação.
+
 Instalar ou reconciliar a configuração manualmente:
 
 ```bash

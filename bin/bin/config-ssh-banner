@@ -100,35 +100,54 @@ done
 
 if [ -f /etc/dnf/automatic.conf ]; then
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "dry-run: configuraria emit_via = motd,stdio em /etc/dnf/automatic.conf"
+    echo "dry-run: configuraria atualizações automáticas completas e motd"
   else
     automatic_tmp="$(mktemp)"
     trap 'rm -f "${profile_tmp:-}" "$automatic_tmp"' EXIT
     run_as_root awk '
-      BEGIN { in_emitters = 0; changed = 0 }
-      /^\[emitters\][[:space:]]*$/ {
-        in_emitters = 1
+      function finish_section() {
+        if (section == "commands") {
+          if (!seen_upgrade_type) print "upgrade_type = default"
+          if (!seen_download_updates) print "download_updates = yes"
+          if (!seen_apply_updates) print "apply_updates = yes"
+        } else if (section == "emitters" && !seen_emit_via) {
+          print "emit_via = motd,stdio"
+        }
+      }
+      /^\[[^]]+\][[:space:]]*$/ {
+        finish_section()
+        section = $0
+        sub(/^\[/, "", section)
+        sub(/\][[:space:]]*$/, "", section)
         print
         next
       }
-      /^\[/ {
-        if (in_emitters && !changed) {
-          print "emit_via = motd,stdio"
-          changed = 1
+      section == "commands" &&
+        /^[[:space:]]*upgrade_type[[:space:]]*=/ {
+          if (!seen_upgrade_type) print "upgrade_type = default"
+          seen_upgrade_type = 1
+          next
         }
-        in_emitters = 0
-      }
-      in_emitters && /^[[:space:]]*emit_via[[:space:]]*=/ {
-        if (!changed) {
-          print "emit_via = motd,stdio"
-          changed = 1
+      section == "commands" &&
+        /^[[:space:]]*download_updates[[:space:]]*=/ {
+          if (!seen_download_updates) print "download_updates = yes"
+          seen_download_updates = 1
+          next
         }
-        next
-      }
+      section == "commands" &&
+        /^[[:space:]]*apply_updates[[:space:]]*=/ {
+          if (!seen_apply_updates) print "apply_updates = yes"
+          seen_apply_updates = 1
+          next
+        }
+      section == "emitters" &&
+        /^[[:space:]]*emit_via[[:space:]]*=/ {
+          if (!seen_emit_via) print "emit_via = motd,stdio"
+          seen_emit_via = 1
+          next
+        }
       { print }
-      END {
-        if (in_emitters && !changed) print "emit_via = motd,stdio"
-      }
+      END { finish_section() }
     ' /etc/dnf/automatic.conf > "$automatic_tmp"
     if ! cmp -s "$automatic_tmp" /etc/dnf/automatic.conf; then
       if [ ! -e /etc/dnf/automatic.conf.dotfiles-backup ]; then
@@ -143,21 +162,28 @@ fi
 
 install_asset usr/local/bin/dotfiles-ssh-banner 0755
 install_asset usr/local/sbin/dotfiles-ssh-banner-cache 0755
+install_asset usr/local/sbin/dotfiles-reboot-if-required 0755
 install_asset etc/profile.d/90-dotfiles-ssh-banner.sh 0644
 install_asset etc/systemd/system/dotfiles-ssh-banner-cache.service 0644
 install_asset etc/systemd/system/dotfiles-ssh-banner-cache.timer 0644
+install_asset etc/systemd/system/dotfiles-reboot-if-required.service 0644
+install_asset etc/systemd/system/dotfiles-reboot-if-required.timer 0644
 
 if command -v restorecon >/dev/null 2>&1; then
   show_or_run restorecon -R \
     /usr/local/bin/dotfiles-ssh-banner \
     /usr/local/sbin/dotfiles-ssh-banner-cache \
+    /usr/local/sbin/dotfiles-reboot-if-required \
     /etc/profile.d/90-dotfiles-ssh-banner.sh \
     /etc/systemd/system/dotfiles-ssh-banner-cache.service \
-    /etc/systemd/system/dotfiles-ssh-banner-cache.timer
+    /etc/systemd/system/dotfiles-ssh-banner-cache.timer \
+    /etc/systemd/system/dotfiles-reboot-if-required.service \
+    /etc/systemd/system/dotfiles-reboot-if-required.timer
 fi
 
 show_or_run systemctl daemon-reload
 show_or_run systemctl enable --now dotfiles-ssh-banner-cache.timer
+show_or_run systemctl enable --now dotfiles-reboot-if-required.timer
 show_or_run systemctl enable --now dnf-automatic.timer
 
 if [ ! -s /var/cache/dotfiles-ssh-banner/status ] ||
