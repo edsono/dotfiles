@@ -94,7 +94,8 @@ Definir `zsh` como shell padrão de login:
 ## Uso manual do stow
 
 ```bash
-stow -t ~ zsh tmux git bin vim nvim codex ghostty lazygit claude bat
+stow -t ~ zsh tmux git bin vim nvim ghostty lazygit claude bat
+stow --no-folding --ignore='^\.codex/skills/\.system(/|$)' -t ~ codex
 ```
 
 ## VPS com `ssh-vps`
@@ -251,6 +252,29 @@ Exemplos de override para Ghostty:
 O diretório `codex/.codex/skills/.system` permanece versionado no repositório,
 mas a instalação via `install.sh` ignora esse caminho no `stow` para preservar
 o conteúdo local existente em `~/.codex/skills/.system`.
+
+## Configuração do Codex
+
+A configuração compartilhada em `system/codex/config.toml` mantém a linha de
+status do Codex consistente entre máquinas. Modelo, esforço de raciocínio,
+autenticação e confiança por projeto permanecem locais.
+
+O `install.sh` reconcilia essa base com `~/.codex/config.toml`. Em servidores,
+o `ssh-vps` e o `dotfiles-deploy` fazem o mesmo somente quando o comando
+`codex` está instalado.
+
+Aplicar ou inspecionar manualmente:
+
+```bash
+config-codex
+config-codex --dry-run
+```
+
+O reconciliador altera somente `status_line` e `status_line_use_colors` dentro
+de `[tui]`, preserva as outras chaves e mantém um backup inicial em
+`~/.codex/config.toml.before-dotfiles`. Instalações antigas nas quais
+`~/.codex` aponta para dentro do clone são migradas para um diretório local
+antes da reconciliação.
 
 ## Skills do Codex
 

@@ -50,7 +50,8 @@ collect_stow_conflict_targets() {
   stow_output="$(
     {
       stow -n -v -t "$TARGET" "${non_codex_packages[@]}"
-      stow -n -v --ignore="$CODEX_IGNORE_REGEX" -t "$TARGET" "$CODEX_PACKAGE"
+      stow -n -v --no-folding --ignore="$CODEX_IGNORE_REGEX" \
+        -t "$TARGET" "$CODEX_PACKAGE"
     } 2>&1 || true
   )"
 
@@ -442,12 +443,18 @@ for package_name in "${PACKAGES[@]}"; do
 done
 
 stow "${STOW_FLAGS[@]}" "${non_codex_packages[@]}"
-stow --ignore="$CODEX_IGNORE_REGEX" "${STOW_FLAGS[@]}" "$CODEX_PACKAGE"
+stow --no-folding --ignore="$CODEX_IGNORE_REGEX" \
+  "${STOW_FLAGS[@]}" "$CODEX_PACKAGE"
 
-if [ "$MODE" = "install" ] && [ "$DRY_RUN" -eq 0 ]; then
-  if command -v bat >/dev/null 2>&1; then
-    bat cache --build
+if [ "$MODE" = "install" ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    "${SCRIPT_DIR}/bin/bin/config-codex" --target "$TARGET" --dry-run
+  else
+    "${SCRIPT_DIR}/bin/bin/config-codex" --target "$TARGET"
+    if command -v bat >/dev/null 2>&1; then
+      bat cache --build
+    fi
+    ensure_claude_skills_link
+    verify_codex_skills_sync
   fi
-  ensure_claude_skills_link
-  verify_codex_skills_sync
 fi

@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+#/ Usage: config-codex [--target <home>] [--dry-run]
+#/ Reconcile portable Codex TUI settings while preserving local configuration.
+set -euo pipefail
+
+DRY_RUN=0
+TARGET_HOME="$HOME"
+MARKER_START="# >>> dotfiles Codex TUI >>>"
+MARKER_END="# <<< dotfiles Codex TUI <<<"
+
+show_help() {
+  grep '^#/' <"$0" | cut -c4-
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --target)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "Error: --target requires a directory." >&2
+        exit 2
+      fi
+      TARGET_HOME="$1"
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Error: unknown option '$1'." >&2
+      show_help >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
+SOURCE="${REPO_ROOT}/system/codex/config.toml"
+CONFIG_DIR="${TARGET_HOME%/}/.codex"
+CONFIG_FILE="${CONFIG_DIR}/config.toml"
+BACKUP_FILE="${CONFIG_FILE}.before-dotfiles"
+LINK_BACKUP="${CONFIG_FILE}.stow-link-before-dotfiles"
+DIR_LINK_BACKUP="${CONFIG_DIR}.stow-link-before-dotfiles"
+GENERATED_FILE="$(mktemp)"
+MANAGED_FILE="$(mktemp)"
+VALIDATION_DIR=""
+MIGRATION_DIR=""
+
+cleanup() {
+  rm -f "$GENERATED_FILE" "$MANAGED_FILE"
+  if [ -n "$VALIDATION_DIR" ]; then
+    rm -rf "$VALIDATION_DIR"
+  fi
+  if [ -n "$MIGRATION_DIR" ] && [ -d "$MIGRATION_DIR" ]; then
+    rm -rf "$MIGRATION_DIR"
+  fi
+}
+trap cleanup EXIT
+
+if [ ! -f "$SOURCE" ]; then
+  echo "Error: shared Codex configuration not found: $SOURCE" >&2
+  exit 1
+fi
+
+if ! grep -Fqx "[tui]" "$SOURCE" ||
+  ! grep -Eq '^[[:space:]]*status_line[[:space:]]*=' "$SOURCE" ||
+  ! grep -Eq '^[[:space:]]*status_line_use_colors[[:space:]]*=' "$SOURCE"; then
+  echo "Error: shared Codex configuration must define the managed TUI keys." >&2
+  exit 1
+fi
+
+awk '
+  /^\[tui\][[:space:]]*$/ {
+    in_tui=1
+    next
+  }
+  in_tui && /^\[/ {
+    exit
+  }
+  in_tui {
+    print
+  }
+' "$SOURCE" >"$MANAGED_FILE"
+
+input_file="/dev/null"
+if [ -e "$CONFIG_FILE" ] || [ -L "$CONFIG_FILE" ]; then
+  input_file="$CONFIG_FILE"
+fi
+
+awk \
+  -v managed_file="$MANAGED_FILE" \
+  -v marker_start="$MARKER_START" \
+  -v marker_end="$MARKER_END" '
+  function emit_managed(line) {
+    print marker_start
+    while ((getline line < managed_file) > 0) {
+      print line
+    }
+    close(managed_file)
+    print marker_end
+    inserted=1
+  }
+
+  $0 == marker_start {
+    skipping_managed=1
+    next
+  }
+  skipping_managed {
+    if ($0 == marker_end) {
+      skipping_managed=0
+    }
+    next
+  }
+  skipping_status_line {
+    if ($0 ~ /\][[:space:]]*(#.*)?$/) {
+      skipping_status_line=0
+    }
+    next
+  }
+  /^\[[^]]+\][[:space:]]*$/ {
+    in_tui=($0 ~ /^\[tui\][[:space:]]*$/)
+    print
+    if (in_tui && !inserted) {
+      emit_managed()
+    }
+    next
+  }
+  in_tui && /^[[:space:]]*status_line[[:space:]]*=/ {
+    if ($0 !~ /\][[:space:]]*(#.*)?$/) {
+      skipping_status_line=1
+    }
+    next
+  }
+  in_tui && /^[[:space:]]*status_line_use_colors[[:space:]]*=/ {
+    next
+  }
+  {
+    print
+  }
+  END {
+    if (!inserted) {
+      if (NR > 0) {
+        print ""
+      }
+      print "[tui]"
+      emit_managed()
+    }
+  }
+' "$input_file" >"$GENERATED_FILE"
+
+if command -v codex >/dev/null 2>&1; then
+  VALIDATION_DIR="$(mktemp -d)"
+  install -m 0600 "$GENERATED_FILE" "${VALIDATION_DIR}/config.toml"
+  if ! CODEX_HOME="$VALIDATION_DIR" codex mcp list >/dev/null 2>&1; then
+    echo "Error: Codex rejected the generated configuration." >&2
+    exit 1
+  fi
+fi
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  if [ -L "$CONFIG_DIR" ]; then
+    printf 'dry-run: migrate %s from a symlink to a local directory\n' "$CONFIG_DIR"
+  fi
+  diff -u "$input_file" "$GENERATED_FILE" || true
+  exit 0
+fi
+
+if [ -L "$CONFIG_DIR" ]; then
+  if [ -e "$DIR_LINK_BACKUP" ] || [ -L "$DIR_LINK_BACKUP" ]; then
+    echo "Error: legacy Codex directory link backup already exists: $DIR_LINK_BACKUP" >&2
+    exit 1
+  fi
+  MIGRATION_DIR="$(mktemp -d "${TARGET_HOME%/}/.codex-migration.XXXXXX")"
+  cp -aL "${CONFIG_DIR}/." "${MIGRATION_DIR}/"
+  mv "$CONFIG_DIR" "$DIR_LINK_BACKUP"
+  if ! mv "$MIGRATION_DIR" "$CONFIG_DIR"; then
+    mv "$DIR_LINK_BACKUP" "$CONFIG_DIR"
+    exit 1
+  fi
+  MIGRATION_DIR=""
+fi
+
+mkdir -p "$CONFIG_DIR"
+if { [ -e "$CONFIG_FILE" ] || [ -L "$CONFIG_FILE" ]; } &&
+  [ ! -e "$BACKUP_FILE" ]; then
+  cp -pL "$CONFIG_FILE" "$BACKUP_FILE"
+  chmod 0600 "$BACKUP_FILE"
+fi
+
+if [ -L "$CONFIG_FILE" ]; then
+  if [ -e "$LINK_BACKUP" ] || [ -L "$LINK_BACKUP" ]; then
+    echo "Error: legacy Codex link backup already exists: $LINK_BACKUP" >&2
+    exit 1
+  fi
+  mv "$CONFIG_FILE" "$LINK_BACKUP"
+fi
+
+if [ -f "$CONFIG_FILE" ] && cmp -s "$GENERATED_FILE" "$CONFIG_FILE"; then
+  chmod 0600 "$CONFIG_FILE"
+  echo "Codex configuration already up to date."
+  exit 0
+fi
+
+install -m 0600 "$GENERATED_FILE" "$CONFIG_FILE"
+echo "Codex configuration reconciled."

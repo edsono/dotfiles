@@ -186,6 +186,12 @@ configure_ghostty_ssh() {
   "${HOME}/.dotfiles/bin/bin/config-ghostty-ssh-server"
 }
 
+configure_codex() {
+  if command -v codex >/dev/null 2>&1; then
+    "${HOME}/.dotfiles/bin/bin/config-codex"
+  fi
+}
+
 ensure_local_overrides() {
   local marker_start="# >>> ssh-vps >>>"
   local marker_end="# <<< ssh-vps <<<"
@@ -232,6 +238,7 @@ show_dry_run() {
   echo "dry-run: would apply Stow packages: ${DOTFILES_PACKAGES}"
   echo "dry-run: would configure the standardized SSH banner"
   echo "dry-run: would configure Ghostty environment forwarding in sshd"
+  echo "dry-run: would reconcile Codex settings when Codex is installed"
 }
 
 if [ "$DOTFILES_MODE" = "dry-run" ]; then
@@ -244,6 +251,7 @@ ensure_git_clone
 apply_dotfiles
 configure_ssh_banner
 configure_ghostty_ssh
+configure_codex
 ensure_local_overrides
 ensure_default_shell
 REMOTE
