@@ -169,21 +169,49 @@ else
     "$label_color" "$reset" "$value_color" "$updates" "$reset"
 fi
 
+warning_messages=()
+critical_messages=()
+
 if [ "$status" != "ok" ]; then
-  printf '%s! Não foi possível atualizar o cache de pacotes.%s\n' "$red" "$reset"
+  critical_messages+=("Não foi possível atualizar o cache de pacotes.")
 elif [ "$cache_is_old" -eq 1 ]; then
-  printf '%s! O cache de atualizações está antigo.%s\n' "$yellow" "$reset"
+  warning_messages+=("O cache de atualizações está antigo.")
 elif [[ "$count" =~ ^[0-9]+$ ]] && [ "$count" -gt 0 ]; then
-  printf '%s! %s atualizações disponíveis.%s\n' "$yellow" "$count" "$reset"
+  warning_messages+=("${count} atualizações disponíveis.")
 fi
 
 if [ "$reboot_required" = "sim" ]; then
-  printf '%s! Reinício necessário.%s\n' "$red" "$reset"
+  critical_messages+=("Reinício necessário.")
 fi
 
 if [ -n "$failed_unit_names" ]; then
-  printf '%s! Serviços falhos: %s.%s\n' \
-    "$red" "$failed_unit_names" "$reset"
+  critical_messages+=("Serviços falhos: ${failed_unit_names}.")
 fi
+
+if [ "$terminal_columns" -ge 80 ]; then
+  alert_indent="                 "
+else
+  alert_indent="  "
+fi
+
+if [ "${#warning_messages[@]}" -gt 0 ] ||
+  [ "${#critical_messages[@]}" -gt 0 ]; then
+  printf '\n'
+fi
+
+for message in "${warning_messages[@]}"; do
+  printf '%s%s%-2s %s%s\n' \
+    "$alert_indent" "$yellow" "!" "$message" "$reset"
+done
+
+if [ "${#warning_messages[@]}" -gt 0 ] &&
+  [ "${#critical_messages[@]}" -gt 0 ]; then
+  printf '\n'
+fi
+
+for message in "${critical_messages[@]}"; do
+  printf '%s%s%-2s %s%s\n' \
+    "$alert_indent" "$red" "!!" "$message" "$reset"
+done
 
 printf '\n'
