@@ -10,6 +10,7 @@ PUBLIC_KEY_FILE=""
 DRY_RUN=0
 SKIP_KEY_PUSH=0
 hosts=()
+SSH_OPTIONS=(-o ConnectTimeout=10 -o ConnectionAttempts=1)
 
 show_help() {
   grep '^#/' <"$0" | cut -c4-
@@ -59,7 +60,7 @@ push_key_to_host() {
     return
   fi
 
-  cat "$PUBLIC_KEY_FILE" | ssh "$host" '
+  cat "$PUBLIC_KEY_FILE" | ssh "${SSH_OPTIONS[@]}" "$host" '
     set -e
     umask 077
     mkdir -p ~/.ssh
@@ -86,7 +87,7 @@ remote_run() {
   local host="$1"
   local mode="$2"
 
-  ssh "$host" \
+  ssh "${SSH_OPTIONS[@]}" "$host" \
     "DOTFILES_MODE='$mode' DOTFILES_REPO_URL='$REPO_URL' DOTFILES_REPO_BRANCH='$REPO_BRANCH' DOTFILES_PACKAGES='${PACKAGES_CSV//,/ }' bash -s" <<'REMOTE'
 set -euo pipefail
 

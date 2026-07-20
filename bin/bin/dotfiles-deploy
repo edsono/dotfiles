@@ -9,6 +9,7 @@ PACKAGES="zsh git tmux bin vim bat"
 HOSTS_FILE="${DOTFILES_DEPLOY_HOSTS_FILE:-${HOME}/.config/dotfiles/deploy-hosts}"
 DRY_RUN=0
 hosts=()
+SSH_OPTIONS=(-o BatchMode=yes -o ConnectTimeout=10 -o ConnectionAttempts=1)
 
 show_help() {
   grep '^#/' <"$0" | cut -c4-
@@ -63,7 +64,7 @@ deploy_host() {
   local mode="apply"
 
   [ "$DRY_RUN" -eq 1 ] && mode="dry-run"
-  ssh "$host" \
+  ssh "${SSH_OPTIONS[@]}" "$host" \
     "DOTFILES_MODE='$mode' DOTFILES_EXPECTED_COMMIT='$LOCAL_COMMIT' DOTFILES_REPO_URL='$REPO_URL' DOTFILES_REPO_BRANCH='$REPO_BRANCH' DOTFILES_PACKAGES='$PACKAGES' bash -s" <<'REMOTE'
 set -euo pipefail
 
