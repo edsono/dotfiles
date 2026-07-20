@@ -26,6 +26,10 @@ ssh_only = true
 format = "[󰌘 $hostname ]($style)"
 style = "bold #00D7FF"
 
+[hostname.aliases]
+edsono = "kinghost"
+vps65451 = "faknet"
+
 [directory]
 truncation_length = 3
 truncation_symbol = "…/"
