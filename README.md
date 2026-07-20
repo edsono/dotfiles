@@ -135,6 +135,9 @@ O script:
 
 - instala o banner SSH padronizado e seus timers
 
+- permite que sessões Ghostty encaminhem cores true color e identificação do
+  terminal pelo SSH
+
 Simular sem alterar nada:
 
 ```bash
@@ -173,6 +176,24 @@ dotfiles-deploy host-a host-b
 
 Para a primeira instalação ou para migrar uma cópia antiga sem Git, use
 `ssh-vps`. O comando legado `ssh-push` é apenas um wrapper depreciado.
+
+## Ghostty via SSH
+
+O Ghostty encaminha `COLORTERM`, `TERM_PROGRAM` e `TERM_PROGRAM_VERSION` nas
+sessões interativas. O servidor precisa aceitar explicitamente essas variáveis
+para que interfaces como o Codex preservem as mesmas cores usadas localmente.
+
+O `ssh-vps` e o `dotfiles-deploy` reconciliam essa configuração
+automaticamente. Para configurar manualmente um servidor que já possui este
+repositório:
+
+```bash
+config-ghostty-ssh-server
+config-ghostty-ssh-server --dry-run
+```
+
+O instalador valida o `sshd` antes de recarregar o serviço e restaura a
+configuração anterior se a validação falhar.
 
 ## Banner SSH
 

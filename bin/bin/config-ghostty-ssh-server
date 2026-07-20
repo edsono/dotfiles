@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+#/ Usage: config-ghostty-ssh-server [--dry-run]
+#/ Configure a Linux SSH server to accept Ghostty terminal environment variables.
+set -euo pipefail
+
+DRY_RUN=0
+TARGET="/etc/ssh/sshd_config.d/60-ghostty-env.conf"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+SOURCE="${REPO_ROOT}/system/ghostty-ssh${TARGET}"
+
+show_help() {
+  grep '^#/' <"$0" | cut -c4-
+}
+
+case "${1:-}" in
+  "")
+    ;;
+  --dry-run)
+    DRY_RUN=1
+    ;;
+  -h|--help)
+    show_help
+    exit 0
+    ;;
+  *)
+    echo "Error: unknown option '$1'." >&2
+    show_help >&2
+    exit 2
+    ;;
+esac
+
+if [ "$(uname -s)" != "Linux" ]; then
+  echo "Error: this installer requires Linux." >&2
+  exit 1
+fi
+
+if [ ! -f "$SOURCE" ]; then
+  echo "Error: configuration asset not found: $SOURCE" >&2
+  exit 1
+fi
+
+run_as_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    echo "Error: root privileges are required." >&2
+    exit 1
+  fi
+}
+
+find_sshd() {
+  if command -v sshd >/dev/null 2>&1; then
+    command -v sshd
+  elif [ -x /usr/sbin/sshd ]; then
+    printf '%s\n' /usr/sbin/sshd
+  else
+    echo "Error: sshd was not found." >&2
+    exit 1
+  fi
+}
+
+find_ssh_service() {
+  local service=""
+
+  for service in sshd ssh; do
+    if systemctl cat "${service}.service" >/dev/null 2>&1; then
+      printf '%s\n' "$service"
+      return 0
+    fi
+  done
+
+  echo "Error: neither sshd.service nor ssh.service was found." >&2
+  exit 1
+}
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  printf 'dry-run: install -D -o root -g root -m 0644 %q %q\n' "$SOURCE" "$TARGET"
+  echo "dry-run: validate the sshd configuration and reload the SSH service"
+  exit 0
+fi
+
+sshd_path="$(find_sshd)"
+ssh_service="$(find_ssh_service)"
+backup_file="$(mktemp)"
+had_target=0
+
+cleanup() {
+  run_as_root rm -f "$backup_file"
+}
+trap cleanup EXIT
+
+restore_previous() {
+  if [ "$had_target" -eq 1 ]; then
+    run_as_root cp --preserve=all "$backup_file" "$TARGET"
+  else
+    run_as_root rm -f "$TARGET"
+  fi
+}
+
+if run_as_root test -e "$TARGET"; then
+  had_target=1
+  run_as_root cp --preserve=all "$TARGET" "$backup_file"
+fi
+
+run_as_root install -D -o root -g root -m 0644 "$SOURCE" "$TARGET"
+
+if ! run_as_root "$sshd_path" -t; then
+  restore_previous
+  echo "Error: invalid sshd configuration; previous state restored." >&2
+  exit 1
+fi
+
+effective_config="$(run_as_root "$sshd_path" -T)"
+for variable in COLORTERM TERM_PROGRAM TERM_PROGRAM_VERSION; do
+  if ! grep -Eiq "^acceptenv[[:space:]]+${variable}$" <<<"$effective_config"; then
+    restore_previous
+    echo "Error: sshd does not include AcceptEnv for ${variable}." >&2
+    echo "Check whether /etc/ssh/sshd_config includes sshd_config.d/*.conf." >&2
+    exit 1
+  fi
+done
+
+if ! run_as_root systemctl reload "$ssh_service"; then
+  restore_previous
+  run_as_root systemctl reload "$ssh_service" || true
+  echo "Error: failed to reload SSH; previous state restored." >&2
+  exit 1
+fi
+
+echo "Ghostty SSH environment configured."

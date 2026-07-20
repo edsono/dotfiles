@@ -4,7 +4,7 @@
 #   ~/.config/ghostty/config.local
 
 theme = noturno
-shell-integration-features = cursor,no-sudo,title
+shell-integration-features = cursor,no-sudo,title,ssh-env,ssh-terminfo
 font-family = JetBrainsMono Nerd Font Mono
 font-size = 10
 macos-option-as-alt = true
