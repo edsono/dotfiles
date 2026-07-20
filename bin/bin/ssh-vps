@@ -114,7 +114,7 @@ ensure_dnf_packages() {
   fi
   run_as_root dnf -y install \
     stow git tmux ripgrep fd-find jq fzf htop zsh vim-enhanced \
-    starship zoxide duf procs ncdu bat git-delta
+    starship zoxide duf procs ncdu bat git-delta dnf-automatic
 }
 
 ensure_git_clone() {
@@ -178,6 +178,10 @@ apply_dotfiles() {
   fi
 }
 
+configure_ssh_banner() {
+  "${HOME}/.dotfiles/bin/bin/config-ssh-banner"
+}
+
 ensure_local_overrides() {
   local marker_start="# >>> ssh-vps >>>"
   local marker_end="# <<< ssh-vps <<<"
@@ -222,6 +226,7 @@ show_dry_run() {
     echo "dry-run: would clone ${DOTFILES_REPO_URL} into ~/.dotfiles"
   fi
   echo "dry-run: would apply Stow packages: ${DOTFILES_PACKAGES}"
+  echo "dry-run: would configure the standardized SSH banner"
 }
 
 if [ "$DOTFILES_MODE" = "dry-run" ]; then
@@ -232,6 +237,7 @@ fi
 ensure_dnf_packages
 ensure_git_clone
 apply_dotfiles
+configure_ssh_banner
 ensure_local_overrides
 ensure_default_shell
 REMOTE

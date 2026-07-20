@@ -1,0 +1,8 @@
+[Unit]
+Description=Atualiza o cache do banner SSH
+After=network-online.target dnf-automatic.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dotfiles-ssh-banner-cache

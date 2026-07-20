@@ -110,18 +110,30 @@ O script:
 
 - instala via `dnf`: `stow`, `git`, `tmux`, `ripgrep`, `fd-find`, `jq`,
   `fzf`, `htop`, `zsh`, `vim-enhanced`, `starship`, `zoxide`, `duf`,
-  `procs`, `ncdu`, `bat` e `git-delta`
+  `procs`, `ncdu`, `bat`, `git-delta` e `dnf-automatic`
+
 - se `starship` não existir nos repositórios atuais, habilita via `dnf` o
   COPR `atim/starship`
+
 - clona `https://github.com/edsono/dotfiles.git` em `~/.dotfiles`
+
 - atualiza clones existentes com `git pull --ff-only`
+
 - preserva cópias antigas sem Git em `~/.dotfiles-backups`
+
 - aplica apenas `zsh`, `git`, `tmux`, `bin`, `vim` e `bat`
+
 - aborta se encontrar conflitos de `stow`
+
 - aborta se o clone remoto tiver alterações locais
+
 - define `zsh` como shell padrão do usuário remoto
+
 - força `EDITOR=vim` e `VISUAL=vim` via `~/.zshrc-local`
+
 - deixa o prompt com `starship` através do `.zshrc` sincronizado
+
+- instala o banner SSH padronizado e seus timers
 
 Simular sem alterar nada:
 
@@ -161,6 +173,27 @@ dotfiles-deploy host-a host-b
 
 Para a primeira instalação ou para migrar uma cópia antiga sem Git, use
 `ssh-vps`. O comando legado `ssh-push` é apenas um wrapper depreciado.
+
+## Banner SSH
+
+O banner separa as informações em duas partes:
+
+- `/etc/motd` mantém a lista completa da última transação aplicada pelo
+  `dnf-automatic`
+
+- um bloco compacto mostra host, sistema, atividade, recursos, rede,
+  atualizações pendentes, reinício necessário e serviços falhos
+
+O bloco compacto aparece apenas em sessões SSH interativas. A consulta ao DNF
+fica em cache e é atualizada diariamente por um timer persistente, por volta
+das 07:30.
+
+Instalar ou reconciliar a configuração manualmente:
+
+```bash
+config-ssh-banner
+config-ssh-banner --dry-run
+```
 
 Remover um pacote específico:
 

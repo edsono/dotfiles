@@ -102,6 +102,7 @@ stow -d "$repo" -t "$HOME" $DOTFILES_PACKAGES
 if command -v bat >/dev/null 2>&1; then
   bat cache --build
 fi
+"$repo/bin/bin/config-ssh-banner"
 REMOTE
 }
 

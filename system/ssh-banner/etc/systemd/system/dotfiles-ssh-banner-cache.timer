@@ -1,0 +1,10 @@
+[Unit]
+Description=Atualiza diariamente o cache do banner SSH
+
+[Timer]
+OnCalendar=*-*-* 07:30:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

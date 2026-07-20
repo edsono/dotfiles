@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CACHE_FILE="/var/cache/dotfiles-ssh-banner/status"
+CACHE_TTL=129600
+
+generated_at=""
+status=""
+count=-1
+reboot_required="unknown"
+
+if [ -r "$CACHE_FILE" ]; then
+  while IFS='=' read -r key value; do
+    case "$key" in
+      generated_at) generated_at="$value" ;;
+      status) status="$value" ;;
+      count) count="$value" ;;
+      reboot_required) reboot_required="$value" ;;
+    esac
+  done < "$CACHE_FILE"
+fi
+
+color=""
+dim=""
+reset=""
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  color=$'\033[1;36m'
+  dim=$'\033[2m'
+  reset=$'\033[0m'
+fi
+
+hostname="$(hostname -f 2>/dev/null || hostname)"
+os_name="$(. /etc/os-release 2>/dev/null && printf '%s' "${PRETTY_NAME:-Linux}")"
+kernel="$(uname -r)"
+uptime_text="$(uptime -p 2>/dev/null || true)"
+uptime_text="${uptime_text#up }"
+load="$(awk '{ print $1, $2, $3 }' /proc/loadavg)"
+
+read -r memory_total memory_available < <(
+  awk '
+    $1 == "MemTotal:" { total = $2 }
+    $1 == "MemAvailable:" { available = $2 }
+    END { print total, available }
+  ' /proc/meminfo
+)
+memory_used=$((memory_total - memory_available))
+memory_percent=$((memory_used * 100 / memory_total))
+memory_used_mib=$((memory_used / 1024))
+memory_total_mib=$((memory_total / 1024))
+
+read -r disk_total disk_used disk_percent < <(
+  df -hP / | awk 'NR == 2 { print $2, $3, $5 }'
+)
+
+ip_address="$(
+  ip route get 1.1.1.1 2>/dev/null |
+    awk '{ for (i = 1; i <= NF; i++) if ($i == "src") { print $(i + 1); exit } }'
+)" || true
+if [ -z "$ip_address" ]; then
+  ip_address="$(
+    ip -4 -o address show scope global 2>/dev/null |
+      awk 'NR == 1 { split($4, address, "/"); print address[1] }'
+  )" || true
+fi
+ip_address="${ip_address:-indisponível}"
+
+updates="indisponível"
+if [[ "$count" =~ ^[0-9]+$ ]]; then
+  updates="$count"
+  now="$(date +%s)"
+  if [[ "$generated_at" =~ ^[0-9]+$ ]] &&
+    [ $((now - generated_at)) -gt "$CACHE_TTL" ]; then
+    updates="${updates} (cache antigo)"
+  elif [ "$status" != "ok" ]; then
+    updates="${updates} (cache com erro)"
+  fi
+fi
+
+failed_units="$(
+  systemctl --failed --no-legend --plain 2>/dev/null |
+    awk 'NF { count++ } END { print count + 0 }'
+)" || failed_units="indisponível"
+
+printf '%s%s%s\n' "$color" "$hostname" "$reset"
+printf '  %sSistema:%s %s · kernel %s\n' "$dim" "$reset" "$os_name" "$kernel"
+printf '  %sAtividade:%s há %s · carga %s\n' \
+  "$dim" "$reset" "${uptime_text:-indisponível}" "$load"
+printf '  %sRecursos:%s memória %s/%s MiB (%s%%) · disco %s/%s (%s)\n' \
+  "$dim" "$reset" "$memory_used_mib" "$memory_total_mib" "$memory_percent" \
+  "$disk_used" "$disk_total" "$disk_percent"
+printf '  %sRede:%s %s\n' "$dim" "$reset" "$ip_address"
+printf '  %sEstado:%s atualizações %s · reinício %s · serviços falhos %s\n\n' \
+  "$dim" "$reset" "$updates" "$reboot_required" "$failed_units"

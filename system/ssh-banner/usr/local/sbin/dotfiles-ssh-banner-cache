@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CACHE_DIR="/var/cache/dotfiles-ssh-banner"
+CACHE_FILE="${CACHE_DIR}/status"
+temporary_file="$(mktemp)"
+trap 'rm -f "$temporary_file"' EXIT
+
+status="ok"
+count="-1"
+dnf_output="$(mktemp)"
+trap 'rm -f "$temporary_file" "$dnf_output"' EXIT
+
+set +e
+dnf -q check-update > "$dnf_output" 2>&1
+dnf_status=$?
+set -e
+
+case "$dnf_status" in
+  0) count=0 ;;
+  100)
+    count="$(
+      awk '
+        /^[[:alnum:]_.+-]+[[:space:]]+[[:alnum:]_.:+-]+[[:space:]]+/ {
+          count++
+        }
+        END { print count + 0 }
+      ' "$dnf_output"
+    )"
+    ;;
+  *) status="error" ;;
+esac
+
+reboot_required="unknown"
+if command -v needs-restarting >/dev/null 2>&1; then
+  if needs-restarting -r >/dev/null 2>&1; then
+    reboot_required="não"
+  else
+    reboot_required="sim"
+  fi
+fi
+
+install -d -m 0755 "$CACHE_DIR"
+{
+  printf 'generated_at=%s\n' "$(date +%s)"
+  printf 'status=%s\n' "$status"
+  printf 'count=%s\n' "$count"
+  printf 'reboot_required=%s\n' "$reboot_required"
+} > "$temporary_file"
+install -o root -g root -m 0644 "$temporary_file" "$CACHE_FILE"

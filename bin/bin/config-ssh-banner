@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DRY_RUN=0
+case "${1:-}" in
+  "") ;;
+  --dry-run) DRY_RUN=1 ;;
+  -h|--help)
+    echo "Uso: config-ssh-banner [--dry-run]"
+    exit 0
+    ;;
+  *)
+    echo "Erro: opção desconhecida: $1" >&2
+    exit 2
+    ;;
+esac
+
+if [ "$(uname -s)" != "Linux" ]; then
+  echo "Erro: este instalador requer Linux." >&2
+  exit 1
+fi
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ASSETS="${REPO_ROOT}/system/ssh-banner"
+BACKUP_DIR="/var/backups/dotfiles-ssh-banner/$(date +%Y%m%d-%H%M%S)"
+
+run_as_root() {
+  if [ "$(id -u)" -eq 0 ]; then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+show_or_run() {
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf 'dry-run:'
+    printf ' %q' "$@"
+    printf '\n'
+  else
+    run_as_root "$@"
+  fi
+}
+
+backup_file() {
+  local source="$1"
+  local destination
+  [ -e "$source" ] || return 0
+  destination="${BACKUP_DIR}${source}"
+  show_or_run install -d -m 0700 "$(dirname "$destination")"
+  show_or_run cp -a "$source" "$destination"
+}
+
+install_asset() {
+  local relative="$1"
+  local mode="$2"
+  local target="/${relative}"
+  show_or_run install -D -o root -g root -m "$mode" \
+    "${ASSETS}/${relative}" "$target"
+}
+
+legacy_files=(
+  /usr/src/scripts/dymotd
+  /etc/cron.daily/dymotd-updates
+  /usr/local/sbin/atualizar-cache-dymotd-updates
+  /etc/systemd/system/dymotd-updates-cache.service
+  /etc/systemd/system/dymotd-updates-cache.timer
+)
+
+if grep -Fxq /usr/src/scripts/dymotd /etc/profile; then
+  backup_file /etc/profile
+fi
+for legacy_file in "${legacy_files[@]}"; do
+  backup_file "$legacy_file"
+done
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "dry-run: removeria a chamada legada de dymotd de /etc/profile"
+else
+  profile_tmp="$(mktemp)"
+  trap 'rm -f "$profile_tmp"' EXIT
+  run_as_root awk '$0 != "/usr/src/scripts/dymotd"' /etc/profile > "$profile_tmp"
+  run_as_root install -o root -g root -m 0644 "$profile_tmp" /etc/profile
+fi
+
+if systemctl list-unit-files dymotd-updates-cache.timer \
+  --no-legend 2>/dev/null | grep -q .; then
+  show_or_run systemctl disable --now dymotd-updates-cache.timer
+fi
+for legacy_file in "${legacy_files[@]}"; do
+  show_or_run rm -f "$legacy_file"
+done
+
+if [ -f /etc/dnf/automatic.conf ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "dry-run: configuraria emit_via = motd,stdio em /etc/dnf/automatic.conf"
+  else
+    automatic_tmp="$(mktemp)"
+    trap 'rm -f "${profile_tmp:-}" "$automatic_tmp"' EXIT
+    run_as_root awk '
+      BEGIN { in_emitters = 0; changed = 0 }
+      /^\[emitters\][[:space:]]*$/ {
+        in_emitters = 1
+        print
+        next
+      }
+      /^\[/ {
+        if (in_emitters && !changed) {
+          print "emit_via = motd,stdio"
+          changed = 1
+        }
+        in_emitters = 0
+      }
+      in_emitters && /^[[:space:]]*emit_via[[:space:]]*=/ {
+        if (!changed) {
+          print "emit_via = motd,stdio"
+          changed = 1
+        }
+        next
+      }
+      { print }
+      END {
+        if (in_emitters && !changed) print "emit_via = motd,stdio"
+      }
+    ' /etc/dnf/automatic.conf > "$automatic_tmp"
+    if ! cmp -s "$automatic_tmp" /etc/dnf/automatic.conf; then
+      if [ ! -e /etc/dnf/automatic.conf.dotfiles-backup ]; then
+        run_as_root cp -a /etc/dnf/automatic.conf \
+          /etc/dnf/automatic.conf.dotfiles-backup
+      fi
+      run_as_root install -o root -g root -m 0644 \
+        "$automatic_tmp" /etc/dnf/automatic.conf
+    fi
+  fi
+fi
+
+install_asset usr/local/bin/dotfiles-ssh-banner 0755
+install_asset usr/local/sbin/dotfiles-ssh-banner-cache 0755
+install_asset etc/profile.d/90-dotfiles-ssh-banner.sh 0644
+install_asset etc/systemd/system/dotfiles-ssh-banner-cache.service 0644
+install_asset etc/systemd/system/dotfiles-ssh-banner-cache.timer 0644
+
+if command -v restorecon >/dev/null 2>&1; then
+  show_or_run restorecon -R \
+    /usr/local/bin/dotfiles-ssh-banner \
+    /usr/local/sbin/dotfiles-ssh-banner-cache \
+    /etc/profile.d/90-dotfiles-ssh-banner.sh \
+    /etc/systemd/system/dotfiles-ssh-banner-cache.service \
+    /etc/systemd/system/dotfiles-ssh-banner-cache.timer
+fi
+
+show_or_run systemctl daemon-reload
+show_or_run systemctl enable --now dotfiles-ssh-banner-cache.timer
+show_or_run systemctl enable --now dnf-automatic.timer
+
+if [ ! -s /var/cache/dotfiles-ssh-banner/status ]; then
+  show_or_run systemctl start dotfiles-ssh-banner-cache.service
+fi
+
+echo "Banner SSH configurado."
