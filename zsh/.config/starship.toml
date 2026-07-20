@@ -1,6 +1,6 @@
 add_newline = true
 command_timeout = 500
-format = "[$hostname$directory$git_branch$git_status$cmd_duration]($style)$character"
+format = "[${custom.remote_hostname}$directory$git_branch$git_status$cmd_duration]($style)$character"
 
 [aws]
 disabled = true
@@ -21,14 +21,10 @@ disabled = true
 error_symbol = "[❯](bold red)"
 success_symbol = "[❯](bold green)"
 
-[hostname]
-ssh_only = true
-format = "[󰌘 $hostname ]($style)"
-style = "bold #00D7FF"
-
-[hostname.aliases]
-edsono = "kinghost"
-vps65451 = "locaweb"
+[custom.remote_hostname]
+command = 'printf "%s" "${DOTFILES_REMOTE_HOST_LABEL:-$(hostname -s)}"'
+when = 'test -n "$SSH_CONNECTION"'
+format = "[󰌘 $output ](bold #00D7FF)"
 
 [directory]
 truncation_length = 3
