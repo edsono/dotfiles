@@ -1,6 +1,7 @@
 # dotfiles
 
-Gerenciamento de configurações pessoais com [GNU Stow](https://www.gnu.org/software/stow/).
+Gerenciamento de configurações pessoais com
+[GNU Stow](https://www.gnu.org/software/stow/).
 
 ## Pacotes
 
@@ -20,7 +21,8 @@ Gerenciamento de configurações pessoais com [GNU Stow](https://www.gnu.org/sof
 
 - `stow` instalado no sistema
 - `curl` e `unzip` (para auto-instalar JetBrainsMono Nerd Font)
-- `zsh` (o script tenta instalar automaticamente via package manager, quando disponível)
+- `zsh` (o script tenta instalar automaticamente via gerenciador de pacotes,
+  quando disponível)
 
 ## Instalação
 
@@ -28,7 +30,8 @@ Em uma máquina nova, sem nada clonado ainda (instala `git`/`stow` se
 faltarem, clona em `~/Code/dotfiles` e roda `./install.sh`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/edsono/dotfiles/main/bootstrap.sh | bash
+curl -fsSL \
+  https://raw.githubusercontent.com/edsono/dotfiles/main/bootstrap.sh | bash
 ```
 
 Com o repositório já clonado, aplicar todos os pacotes no `$HOME`:
@@ -91,13 +94,13 @@ Definir `zsh` como shell padrão de login:
 ## Uso manual do stow
 
 ```bash
-stow -t ~ zsh tmux git bin vim nvim codex ghostty lazygit claude
+stow -t ~ zsh tmux git bin vim nvim codex ghostty lazygit claude bat
 ```
 
 ## VPS com `ssh-vps`
 
-Para preparar uma VPS AlmaLinux/RHEL-like usando apenas `dnf` e aplicar um
-subset seguro dos dotfiles:
+Para preparar uma VPS AlmaLinux/RHEL-like usando apenas `dnf`, criar um clone
+Git HTTPS em `~/.dotfiles` e aplicar um subset seguro dos dotfiles:
 
 ```bash
 bin/bin/ssh-vps usuario@host
@@ -105,13 +108,17 @@ bin/bin/ssh-vps usuario@host
 
 O script:
 
-- instala via `dnf` apenas: `stow`, `git`, `tmux`, `ripgrep`, `fd-find`,
-  `jq`, `fzf`, `htop`, `zsh`, `vim-enhanced`, `starship`, `zoxide`, `duf`
-  `procs`, `ncdu` e `rsync`
+- instala via `dnf`: `stow`, `git`, `tmux`, `ripgrep`, `fd-find`, `jq`,
+  `fzf`, `htop`, `zsh`, `vim-enhanced`, `starship`, `zoxide`, `duf`,
+  `procs`, `ncdu`, `bat` e `git-delta`
 - se `starship` não existir nos repositórios atuais, habilita via `dnf` o
   COPR `atim/starship`
-- sincroniza apenas `zsh`, `git`, `tmux`, `bin` e `vim`
+- clona `https://github.com/edsono/dotfiles.git` em `~/.dotfiles`
+- atualiza clones existentes com `git pull --ff-only`
+- preserva cópias antigas sem Git em `~/.dotfiles-backups`
+- aplica apenas `zsh`, `git`, `tmux`, `bin`, `vim` e `bat`
 - aborta se encontrar conflitos de `stow`
+- aborta se o clone remoto tiver alterações locais
 - define `zsh` como shell padrão do usuário remoto
 - força `EDITOR=vim` e `VISUAL=vim` via `~/.zshrc-local`
 - deixa o prompt com `starship` através do `.zshrc` sincronizado
@@ -131,8 +138,29 @@ bin/bin/ssh-vps --key ~/.ssh/id_ed25519.pub usuario@host
 Trocar os grupos sincronizados:
 
 ```bash
-bin/bin/ssh-vps --packages zsh,git,tmux,bin,vim usuario@host
+bin/bin/ssh-vps --packages zsh,git,tmux,bin,vim,bat usuario@host
 ```
+
+## Deploy em vários hosts
+
+Cadastre os aliases SSH localmente, sem versionar dados de infraestrutura:
+
+```bash
+mkdir -p ~/.config/dotfiles
+printf '%s\n' host-a host-b > ~/.config/dotfiles/deploy-hosts
+```
+
+O deploy exige `main` limpa e idêntica a `origin/main`. Ele atualiza todos os
+hosts, reaplica o Stow e retorna erro ao final se algum destino falhar:
+
+```bash
+dotfiles-deploy
+dotfiles-deploy --dry-run
+dotfiles-deploy host-a host-b
+```
+
+Para a primeira instalação ou para migrar uma cópia antiga sem Git, use
+`ssh-vps`. O comando legado `ssh-push` é apenas um wrapper depreciado.
 
 Remover um pacote específico:
 
@@ -147,12 +175,14 @@ Para configurações específicas de máquina/sistema, use arquivos locais:
 - Zsh: `~/.zshrc-local` (carregado no final de `~/.zshrc`)
 - Vim: `~/.vimrc-local` (carregado no final de `~/.vimrc`)
 - Ghostty Linux: `~/.config/ghostty/config.local`
-- Ghostty macOS: `~/Library/Application Support/com.mitchellh.ghostty/config.local`
+- Ghostty macOS:
+  `~/Library/Application Support/com.mitchellh.ghostty/config.local`
 
 Exemplos de override para Ghostty:
 
 - `ghostty/.config/ghostty/config.local.example`
-- `ghostty/Library/Application Support/com.mitchellh.ghostty/config.local.example`
+- `ghostty/Library/Application
+  Support/com.mitchellh.ghostty/config.local.example`
 
 ## Observação sobre Codex `.system`
 
@@ -163,8 +193,11 @@ o conteúdo local existente em `~/.codex/skills/.system`.
 ## Skills do Codex
 
 - Fonte de verdade: `codex/.codex/skills` neste repositório.
-- `install.sh` sincroniza essas skills para `~/.codex/skills` e valida o resultado.
-- `bin/bin/ssh-push` também sincroniza as skills para hosts remotos, inclusive no fallback sem `rsync`.
+- `install.sh` sincroniza essas skills para `~/.codex/skills` e valida o
+  resultado.
+
+- Hosts com o clone Git recebem as skills publicadas junto com o restante do
+  repositório.
 - O caminho `~/.codex/skills/.system` local é preservado por padrão.
 
 Verificação local:
@@ -176,5 +209,6 @@ find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l
 Verificação remota:
 
 ```bash
-ssh <host> 'find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l'
+ssh <host> \
+  'find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l'
 ```

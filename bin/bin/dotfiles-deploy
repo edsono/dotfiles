@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+#/ Usage: dotfiles-deploy [--dry-run] [host...]
+#/ Pull and apply the published dotfiles commit on multiple hosts.
+set -euo pipefail
+
+REPO_URL="https://github.com/edsono/dotfiles.git"
+REPO_BRANCH="main"
+PACKAGES="zsh git tmux bin vim bat"
+HOSTS_FILE="${DOTFILES_DEPLOY_HOSTS_FILE:-${HOME}/.config/dotfiles/deploy-hosts}"
+DRY_RUN=0
+hosts=()
+
+show_help() {
+  grep '^#/' <"$0" | cut -c4-
+  cat <<EOF
+
+Options:
+  --dry-run            Validate without pulling or applying Stow
+  -h, --help           Show this help
+
+When no hosts are provided, targets are read from:
+  ${HOSTS_FILE}
+EOF
+}
+
+die() {
+  echo "Error: $*" >&2
+  exit 1
+}
+
+load_hosts_file() {
+  local line
+
+  [ -f "$HOSTS_FILE" ] || die "hosts file not found: $HOSTS_FILE"
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [ -n "$line" ] && hosts+=("$line")
+  done <"$HOSTS_FILE"
+}
+
+preflight_local_repo() {
+  local branch
+
+  git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
+    die "script is not inside a Git worktree"
+  branch="$(git -C "$REPO_ROOT" branch --show-current)"
+  [ "$branch" = "$REPO_BRANCH" ] ||
+    die "expected local branch ${REPO_BRANCH}, found ${branch}"
+  [ -z "$(git -C "$REPO_ROOT" status --porcelain)" ] ||
+    die "local worktree must be clean before deployment"
+
+  git -C "$REPO_ROOT" fetch --quiet origin "$REPO_BRANCH"
+  LOCAL_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+  ORIGIN_COMMIT="$(git -C "$REPO_ROOT" rev-parse "origin/${REPO_BRANCH}")"
+  [ "$LOCAL_COMMIT" = "$ORIGIN_COMMIT" ] ||
+    die "local HEAD must equal origin/${REPO_BRANCH} before deployment"
+}
+
+deploy_host() {
+  local host="$1"
+  local mode="apply"
+
+  [ "$DRY_RUN" -eq 1 ] && mode="dry-run"
+  ssh "$host" \
+    "DOTFILES_MODE='$mode' DOTFILES_EXPECTED_COMMIT='$LOCAL_COMMIT' DOTFILES_REPO_URL='$REPO_URL' DOTFILES_REPO_BRANCH='$REPO_BRANCH' DOTFILES_PACKAGES='$PACKAGES' bash -s" <<'REMOTE'
+set -euo pipefail
+
+repo="${HOME}/.dotfiles"
+[ -d "${repo}/.git" ] || {
+  echo "Error: ~/.dotfiles is not a Git clone; run ssh-vps first." >&2
+  exit 1
+}
+[ "$(git -C "$repo" remote get-url origin)" = "$DOTFILES_REPO_URL" ] || {
+  echo "Error: unexpected origin in ~/.dotfiles." >&2
+  exit 1
+}
+[ "$(git -C "$repo" branch --show-current)" = "$DOTFILES_REPO_BRANCH" ] || {
+  echo "Error: unexpected branch in ~/.dotfiles." >&2
+  exit 1
+}
+[ -z "$(git -C "$repo" status --porcelain)" ] || {
+  echo "Error: ~/.dotfiles has local changes." >&2
+  git -C "$repo" status --short >&2
+  exit 1
+}
+
+if [ "$DOTFILES_MODE" = "dry-run" ]; then
+  current_commit="$(git -C "$repo" rev-parse HEAD)"
+  printf 'current=%s target=%s\n' "$current_commit" "$DOTFILES_EXPECTED_COMMIT"
+  exit 0
+fi
+
+git -C "$repo" pull --ff-only origin "$DOTFILES_REPO_BRANCH"
+[ "$(git -C "$repo" rev-parse HEAD)" = "$DOTFILES_EXPECTED_COMMIT" ] || {
+  echo "Error: deployed commit does not match the local published commit." >&2
+  exit 1
+}
+stow -R -d "$repo" -t "$HOME" $DOTFILES_PACKAGES
+if command -v bat >/dev/null 2>&1; then
+  bat cache --build
+fi
+REMOTE
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      hosts+=("$1")
+      ;;
+  esac
+  shift
+done
+
+if [ "${#hosts[@]}" -eq 0 ]; then
+  load_hosts_file
+fi
+[ "${#hosts[@]}" -gt 0 ] || die "no deployment hosts configured"
+command -v ssh >/dev/null 2>&1 || die "required command 'ssh' not found"
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+LOCAL_COMMIT=""
+ORIGIN_COMMIT=""
+preflight_local_repo
+
+failed_hosts=()
+successful_hosts=()
+for host in "${hosts[@]}"; do
+  printf '[%s] %s: %s\n' "$(date '+%H:%M:%S')" "$host" \
+    "$([ "$DRY_RUN" -eq 1 ] && echo validating || echo deploying)"
+  if deploy_host "$host"; then
+    successful_hosts+=("$host")
+  else
+    failed_hosts+=("$host")
+  fi
+done
+
+printf 'Commit: %s\n' "$LOCAL_COMMIT"
+printf 'Successful: %s\n' "${successful_hosts[*]:-none}"
+printf 'Failed: %s\n' "${failed_hosts[*]:-none}"
+[ "${#failed_hosts[@]}" -eq 0 ]
