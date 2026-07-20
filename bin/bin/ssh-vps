@@ -114,7 +114,7 @@ ensure_dnf_packages() {
   fi
   run_as_root dnf -y install \
     stow git tmux ripgrep fd-find jq fzf htop zsh vim-enhanced \
-    starship zoxide duf procs ncdu bat git-delta dnf-automatic
+    starship zoxide duf procs ncdu bat git-delta dnf-automatic dnf-utils
 }
 
 ensure_git_clone() {

@@ -7,7 +7,7 @@ CACHE_TTL=129600
 generated_at=""
 status=""
 count=-1
-reboot_required="unknown"
+reboot_required="desconhecido"
 
 if [ -r "$CACHE_FILE" ]; then
   while IFS='=' read -r key value; do

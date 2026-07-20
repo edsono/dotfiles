@@ -31,7 +31,7 @@ case "$dnf_status" in
   *) status="error" ;;
 esac
 
-reboot_required="unknown"
+reboot_required="desconhecido"
 if command -v needs-restarting >/dev/null 2>&1; then
   if needs-restarting -r >/dev/null 2>&1; then
     reboot_required="não"

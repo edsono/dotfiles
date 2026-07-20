@@ -42,6 +42,10 @@ show_or_run() {
   fi
 }
 
+if ! rpm -q dnf-automatic dnf-utils >/dev/null 2>&1; then
+  show_or_run dnf -y install dnf-automatic dnf-utils
+fi
+
 backup_file() {
   local source="$1"
   local destination

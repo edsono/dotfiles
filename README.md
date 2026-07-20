@@ -110,7 +110,7 @@ O script:
 
 - instala via `dnf`: `stow`, `git`, `tmux`, `ripgrep`, `fd-find`, `jq`,
   `fzf`, `htop`, `zsh`, `vim-enhanced`, `starship`, `zoxide`, `duf`,
-  `procs`, `ncdu`, `bat`, `git-delta` e `dnf-automatic`
+  `procs`, `ncdu`, `bat`, `git-delta`, `dnf-automatic` e `dnf-utils`
 
 - se `starship` não existir nos repositórios atuais, habilita via `dnf` o
   COPR `atim/starship`
