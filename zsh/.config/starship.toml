@@ -28,7 +28,7 @@ style = "bold #00D7FF"
 
 [hostname.aliases]
 edsono = "kinghost"
-vps65451 = "faknet"
+vps65451 = "locaweb"
 
 [directory]
 truncation_length = 3
