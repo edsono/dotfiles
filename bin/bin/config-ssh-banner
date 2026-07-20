@@ -42,8 +42,11 @@ show_or_run() {
   fi
 }
 
-if ! rpm -q dnf-automatic dnf-utils >/dev/null 2>&1; then
+REFRESH_CACHE=0
+if ! rpm -q dnf-automatic >/dev/null 2>&1 ||
+  ! command -v needs-restarting >/dev/null 2>&1; then
   show_or_run dnf -y install dnf-automatic dnf-utils
+  REFRESH_CACHE=1
 fi
 
 backup_file() {
@@ -157,7 +160,8 @@ show_or_run systemctl daemon-reload
 show_or_run systemctl enable --now dotfiles-ssh-banner-cache.timer
 show_or_run systemctl enable --now dnf-automatic.timer
 
-if [ ! -s /var/cache/dotfiles-ssh-banner/status ]; then
+if [ ! -s /var/cache/dotfiles-ssh-banner/status ] ||
+  [ "$REFRESH_CACHE" -eq 1 ]; then
   show_or_run systemctl start dotfiles-ssh-banner-cache.service
 fi
 
