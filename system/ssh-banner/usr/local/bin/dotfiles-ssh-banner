@@ -21,14 +21,18 @@ if [ -r "$CACHE_FILE" ]; then
 fi
 
 logo_color=""
-data_color=""
 heading_color=""
+label_color=""
+value_color=""
+distro_color=""
 yellow=""
 red=""
 reset=""
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
-  data_color=$'\033[38;5;252m'
   heading_color=$'\033[1;37m'
+  label_color=$'\033[1;38;5;39m'
+  value_color=$'\033[38;5;255m'
+  distro_color=$'\033[1;38;5;45m'
   yellow=$'\033[1;33m'
   red=$'\033[1;31m'
   reset=$'\033[0m'
@@ -126,19 +130,21 @@ esac
 
 details=(
   "${heading_color}${hostname}${reset}"
-  "${data_color}${os_name}${reset}"
-  "${data_color}Kernel ${kernel}${reset}"
-  "${data_color}Há ${uptime_text:-indisponível} · carga ${load}${reset}"
-  "${data_color}Memória ${memory_used_mib}/${memory_total_mib} MiB (${memory_percent}%)${reset}"
-  "${data_color}Disco ${disk_used}/${disk_total} (${disk_percent})${reset}"
-  "${data_color}IP ${ip_address}${reset}"
-  "${data_color}Atualizações ${updates}${reset}"
+  "${distro_color}${os_name}${reset}"
+  "${label_color}Kernel${reset} ${value_color}${kernel}${reset}"
+  "${label_color}Uptime${reset} ${value_color}${uptime_text:-indisponível}${reset}"
+  "${label_color}Carga${reset} ${value_color}${load}${reset}"
+  "${label_color}Memória${reset} ${value_color}${memory_used_mib}/${memory_total_mib} MiB (${memory_percent}%)${reset}"
+  "${label_color}Disco${reset} ${value_color}${disk_used}/${disk_total} (${disk_percent})${reset}"
+  "${label_color}IP${reset} ${value_color}${ip_address}${reset} · ${label_color}Atualizações${reset} ${value_color}${updates}${reset}"
 )
 
 terminal_columns="${COLUMNS:-}"
 if ! [[ "$terminal_columns" =~ ^[0-9]+$ ]]; then
   terminal_columns="$(tput cols 2>/dev/null || echo 80)"
 fi
+
+printf '\n'
 
 if [ "$terminal_columns" -ge 80 ]; then
   for index in "${!logo[@]}"; do
@@ -147,14 +153,20 @@ if [ "$terminal_columns" -ge 80 ]; then
   done
 else
   printf '%s%s%s\n' "$heading_color" "$hostname" "$reset"
-  printf '  %s%s · kernel %s%s\n' "$data_color" "$os_name" "$kernel" "$reset"
-  printf '  %sHá %s · carga %s%s\n' \
-    "$data_color" "${uptime_text:-indisponível}" "$load" "$reset"
-  printf '  %sMemória %s/%s MiB (%s%%) · disco %s/%s (%s)%s\n' \
-    "$data_color" "$memory_used_mib" "$memory_total_mib" "$memory_percent" \
-    "$disk_used" "$disk_total" "$disk_percent" "$reset"
-  printf '  %sIP %s · atualizações %s%s\n' \
-    "$data_color" "$ip_address" "$updates" "$reset"
+  printf '  %s%s%s · %sKernel%s %s%s%s\n' \
+    "$distro_color" "$os_name" "$reset" "$label_color" "$reset" \
+    "$value_color" "$kernel" "$reset"
+  printf '  %sUptime%s %s%s%s · %sCarga%s %s%s%s\n' \
+    "$label_color" "$reset" "$value_color" \
+    "${uptime_text:-indisponível}" "$reset" "$label_color" "$reset" \
+    "$value_color" "$load" "$reset"
+  printf '  %sMemória%s %s%s/%s MiB (%s%%)%s · %sDisco%s %s%s/%s (%s)%s\n' \
+    "$label_color" "$reset" "$value_color" "$memory_used_mib" \
+    "$memory_total_mib" "$memory_percent" "$reset" "$label_color" "$reset" \
+    "$value_color" "$disk_used" "$disk_total" "$disk_percent" "$reset"
+  printf '  %sIP%s %s%s%s · %sAtualizações%s %s%s%s\n' \
+    "$label_color" "$reset" "$value_color" "$ip_address" "$reset" \
+    "$label_color" "$reset" "$value_color" "$updates" "$reset"
 fi
 
 if [ "$status" != "ok" ]; then
