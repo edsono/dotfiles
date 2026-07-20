@@ -20,6 +20,23 @@ show_color() {
     "$red" "$green" "$blue" "$example" "$reset"
 }
 
+show_prompt() {
+  local role="$1"
+  local hex="$2"
+  local red="$3"
+  local green="$4"
+  local blue="$5"
+
+  printf '%-13s %-7s  ' "$role" "$hex"
+  printf '\033[1;38;2;%s;%s;%sm󰌘 kinghost %s' \
+    "$red" "$green" "$blue" "$reset"
+  printf '\033[1;38;2;158;205;197mdotfiles/system/ssh-banner%s ' "$reset"
+  printf '\033[3;38;2;158;205;197m main%s ' "$reset"
+  printf '\033[38;2;158;205;197m ? +%s ' "$reset"
+  printf '\033[1;38;2;241;223;183m2s%s ' "$reset"
+  printf '\033[1;38;2;168;224;162m❯%s\n' "$reset"
+}
+
 printf '%sCores atuais do banner e do prompt SSH%s\n\n' "$bold" "$reset"
 show_color "Logo" "#0087FF" 0 135 255 "#####"
 show_color "Distribuição" "#00D7FF" 0 215 255 "AlmaLinux 9.8"
@@ -28,10 +45,10 @@ show_color "Valores" "#EEEEEE" 238 238 238 "5.14.0 · 18h · 192.0.2.10"
 show_color "Auxiliares" "#8A8A8A" 138 138 138 "automação em 18h · sudo dnf upgrade"
 show_color "Prompt SSH" "#8FB2E4" 143 178 228 "󰌘 kinghost"
 
-printf '\n%sComparação lado a lado%s\n\n' "$bold" "$reset"
-printf '\033[38;2;0;135;255mLogo%s  ' "$reset"
-printf '\033[38;2;0;215;255mDistribuição%s  ' "$reset"
-printf '\033[38;2;0;175;255mRótulo%s  ' "$reset"
-printf '\033[38;2;238;238;238mValor%s  ' "$reset"
-printf '\033[38;2;138;138;138mAuxiliar%s  ' "$reset"
-printf '\033[1;38;2;143;178;228m󰌘 Prompt SSH%s\n' "$reset"
+printf '\n%sO mesmo prompt completo com cada azul%s\n\n' "$bold" "$reset"
+show_prompt "Logo" "#0087FF" 0 135 255
+show_prompt "Distribuição" "#00D7FF" 0 215 255
+show_prompt "Rótulos" "#00AFFF" 0 175 255
+show_prompt "Valores" "#EEEEEE" 238 238 238
+show_prompt "Auxiliares" "#8A8A8A" 138 138 138
+show_prompt "Prompt atual" "#8FB2E4" 143 178 228
