@@ -5,7 +5,11 @@ set -euo pipefail
 
 REPO_URL="https://github.com/edsono/dotfiles.git"
 REPO_BRANCH="main"
-PACKAGES_CSV="zsh,git,tmux,bin,vim,bat"
+PACKAGES_CSV="zsh,git,tmux,bin,vim,bat,claude,codex"
+# Sem --no-folding o stow troca ~/.codex e ~/.claude por um symlink quando eles
+# ainda não existem, e o runtime dessas ferramentas grava dentro do clone.
+NOFOLD_PACKAGES="codex claude"
+CODEX_IGNORE_REGEX='^\.codex/skills/\.system(/|$)'
 PUBLIC_KEY_FILE=""
 DRY_RUN=0
 SKIP_KEY_PUSH=0
@@ -19,7 +23,7 @@ show_help() {
 Options:
   --key <pubkey>       Use an explicit local SSH public key
   --packages <list>    Comma-separated Stow packages
-                       (default: zsh,git,tmux,bin,vim,bat)
+                       (default: zsh,git,tmux,bin,vim,bat,claude,codex)
   --dry-run            Inspect hosts and show planned actions
   --skip-key-push      Assume the SSH key is already authorized
   -h, --help           Show this help
@@ -77,7 +81,7 @@ validate_packages() {
 
   for package_name in $packages; do
     case "$package_name" in
-      zsh|git|tmux|bin|vim|bat) ;;
+      zsh|git|tmux|bin|vim|bat|claude|codex) ;;
       *) die "unsupported VPS package: $package_name" ;;
     esac
   done
@@ -88,7 +92,7 @@ remote_run() {
   local mode="$2"
 
   ssh "${SSH_OPTIONS[@]}" "$host" \
-    "DOTFILES_MODE='$mode' DOTFILES_REPO_URL='$REPO_URL' DOTFILES_REPO_BRANCH='$REPO_BRANCH' DOTFILES_PACKAGES='${PACKAGES_CSV//,/ }' bash -s" <<'REMOTE'
+    "DOTFILES_MODE='$mode' DOTFILES_REPO_URL='$REPO_URL' DOTFILES_REPO_BRANCH='$REPO_BRANCH' DOTFILES_PACKAGES='${PACKAGES_CSV//,/ }' DOTFILES_NOFOLD_PACKAGES='$NOFOLD_PACKAGES' DOTFILES_CODEX_IGNORE='$CODEX_IGNORE_REGEX' bash -s" <<'REMOTE'
 set -euo pipefail
 
 run_as_root() {
@@ -161,18 +165,58 @@ ensure_git_clone() {
   git -C "${HOME}/.dotfiles" pull --ff-only origin "$DOTFILES_REPO_BRANCH"
 }
 
-apply_dotfiles() {
+is_nofold_package() {
+  local candidate="$1"
+  local package_name
+
+  for package_name in $DOTFILES_NOFOLD_PACKAGES; do
+    [ "$package_name" = "$candidate" ] && return 0
+  done
+  return 1
+}
+
+split_packages() {
+  local package_name
+
+  folding_packages=()
+  nofolding_packages=()
+  for package_name in $DOTFILES_PACKAGES; do
+    if is_nofold_package "$package_name"; then
+      nofolding_packages+=("$package_name")
+    else
+      folding_packages+=("$package_name")
+    fi
+  done
+}
+
+# $1 = folding|nofolding, $@ restante = pacotes. O dry-run de conflitos precisa
+# usar exatamente as mesmas flags do stow real, senão reporta conflito falso.
+stow_group() {
+  local mode="$1"
+  shift
+  local flags=()
   local conflict_output=""
 
-  cd "${HOME}/.dotfiles"
-  conflict_output="$(stow -n -v -t "$HOME" $DOTFILES_PACKAGES 2>&1 || true)"
+  [ "$#" -gt 0 ] || return 0
+  if [ "$mode" = "nofolding" ]; then
+    flags=(--no-folding --ignore="$DOTFILES_CODEX_IGNORE")
+  fi
+
+  conflict_output="$(stow -n -v -t "$HOME" "${flags[@]+${flags[@]}}" "$@" 2>&1 || true)"
   if printf '%s\n' "$conflict_output" | grep -q 'existing target'; then
     printf '%s\n' "$conflict_output" >&2
     echo "Error: Stow conflicts detected; no files were overwritten." >&2
     exit 1
   fi
 
-  stow -t "$HOME" $DOTFILES_PACKAGES
+  stow -t "$HOME" "${flags[@]+${flags[@]}}" "$@"
+}
+
+apply_dotfiles() {
+  cd "${HOME}/.dotfiles"
+  split_packages
+  stow_group folding ${folding_packages[@]+"${folding_packages[@]}"}
+  stow_group nofolding ${nofolding_packages[@]+"${nofolding_packages[@]}"}
   if command -v bat >/dev/null 2>&1; then
     bat cache --build
   fi
@@ -190,6 +234,10 @@ configure_codex() {
   if command -v codex >/dev/null 2>&1; then
     "${HOME}/.dotfiles/bin/bin/config-codex"
   fi
+}
+
+configure_claude_skills() {
+  "${HOME}/.dotfiles/bin/bin/config-claude-skills"
 }
 
 ensure_local_overrides() {
@@ -239,6 +287,7 @@ show_dry_run() {
   echo "dry-run: would configure the standardized SSH banner"
   echo "dry-run: would configure Ghostty environment forwarding in sshd"
   echo "dry-run: would reconcile Codex settings when Codex is installed"
+  echo "dry-run: would link ~/.claude/skills to ~/.agents/skills"
 }
 
 if [ "$DOTFILES_MODE" = "dry-run" ]; then
@@ -252,6 +301,7 @@ apply_dotfiles
 configure_ssh_banner
 configure_ghostty_ssh
 configure_codex
+configure_claude_skills
 ensure_local_overrides
 ensure_default_shell
 REMOTE

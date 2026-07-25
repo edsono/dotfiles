@@ -94,9 +94,15 @@ Definir `zsh` como shell padrão de login:
 ## Uso manual do stow
 
 ```bash
-stow -t ~ zsh tmux git bin vim nvim ghostty lazygit claude bat
-stow --no-folding --ignore='^\.codex/skills/\.system(/|$)' -t ~ codex
+stow -t ~ zsh tmux git bin vim nvim ghostty lazygit bat
+stow --no-folding --ignore='^\.codex/skills/\.system(/|$)' -t ~ codex claude
+config-claude-skills
 ```
+
+`codex` e `claude` exigem `--no-folding`. Sem essa flag o Stow substitui
+`~/.codex` e `~/.claude` inteiros por um symlink quando eles ainda não existem,
+e o estado de runtime dessas ferramentas (sessões, histórico, cache) passa a ser
+gravado dentro do clone do repositório.
 
 ## VPS com `ssh-vps`
 
@@ -156,6 +162,10 @@ Trocar os grupos sincronizados:
 ```bash
 bin/bin/ssh-vps --packages zsh,git,tmux,bin,vim,bat usuario@host
 ```
+
+O subset padrão é `zsh,git,tmux,bin,vim,bat,claude,codex`. O `dotfiles-deploy`
+aplica os mesmos pacotes, então a configuração do Claude Code e as skills
+chegam aos servidores junto com o restante.
 
 ## Deploy em vários hosts
 
@@ -276,12 +286,16 @@ de `[tui]`, preserva as outras chaves e mantém um backup inicial em
 `~/.codex` aponta para dentro do clone são migradas para um diretório local
 antes da reconciliação.
 
-## Skills do Codex
+## Skills do Codex e do Claude Code
 
-- Fonte de verdade: `codex/.codex/skills` neste repositório.
+- Fonte de verdade única: `codex/.codex/skills` neste repositório. As entradas
+  em `codex/.agents/skills` são apenas symlinks relativos para lá — nunca
+  duplique o conteúdo entre as duas árvores.
 - `install.sh` sincroniza essas skills para `~/.codex/skills` e valida o
   resultado.
-
+- `config-claude-skills` aponta `~/.claude/skills` para `~/.agents/skills`, de
+  onde o Claude Code lê as mesmas skills. O script aborta se `~/.claude` for um
+  symlink, sinal de que o Stow rodou sem `--no-folding`.
 - Hosts com o clone Git recebem as skills publicadas junto com o restante do
   repositório.
 - O caminho `~/.codex/skills/.system` local é preservado por padrão.
@@ -290,6 +304,7 @@ Verificação local:
 
 ```bash
 find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l
+find -L ~/.claude/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l
 ```
 
 Verificação remota:
@@ -298,3 +313,15 @@ Verificação remota:
 ssh <host> \
   'find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l'
 ```
+
+## Configuração do Claude Code
+
+`claude/.claude/settings.json` e `claude/.claude/statusline-command.sh` são
+versionados e chegam a todos os hosts. A status line mostra diretório, estado do
+Git, modelo, versão do Claude Code, uso de contexto e limites de uso.
+
+O Claude Code **reescreve** `~/.claude/settings.json` sozinho a cada `/model`,
+`/effort`, `/fast` e `/statusline`, e o arquivo é um symlink para o repositório.
+Preferências locais aparecem portanto como diff espontâneo no `git status` —
+revise antes de commitar e evite publicar caminhos absolutos ou entradas de
+`permissions.allow` geradas por aprovação pontual.

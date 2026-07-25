@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Claude Code statusLine
-# ~/Code/FAK/Ruler  main*↑2 │ Opus 4.8 ███░░░░░░░ 28% │ 5h 12% · wk 40%
+# ~/Code/FAK/Ruler  main*↑2 │ Opus 4.8 v2.1.3 ███░░░░░░░ 28% │ 5h 12% · wk 40%
 
 # printf %.0f respeita LC_NUMERIC; em locales com vírgula decimal ele rejeita "28.4".
 export LC_ALL=C
@@ -10,10 +10,11 @@ input=$(cat)
 # Um único processo jq extrai tudo. Separador é 0x1f (unit separator) e não TAB:
 # TAB conta como IFS-whitespace no `read`, o que colapsaria campos vazios e
 # deslocaria todos os valores seguintes.
-IFS=$'\x1f' read -r cwd model used_pct total_input ctx_size fh_pct fh_reset sd_pct sd_reset <<<"$(
+IFS=$'\x1f' read -r cwd model version used_pct total_input ctx_size fh_pct fh_reset sd_pct sd_reset <<<"$(
   printf '%s' "$input" | jq -r '
     [ (.workspace.current_dir // .cwd // ""),
       (.model.display_name // ""),
+      (.version // ""),
       (.context_window.used_percentage // ""),
       (.context_window.total_input_tokens // ""),
       (.context_window.context_window_size // ""),
@@ -122,6 +123,7 @@ limits=()
 sep="${DIM} │ ${R}"
 line="${BLUE}${dir}${R}${git_seg}"
 [ -n "$model" ] && line+="${sep}${CYAN}${model}${R}"
+[ -n "$version" ] && line+=" ${DIM}v${version}${R}"
 [ -n "$ctx_seg" ] && line+="${ctx_seg}"
 if [ ${#limits[@]} -gt 0 ]; then
   line+="${sep}${limits[0]}"

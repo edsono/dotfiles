@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+#/ Usage: config-claude-skills [--target <home>] [--dry-run]
+#/ Point ~/.claude/skills at the shared ~/.agents/skills tree delivered by Stow.
+set -euo pipefail
+
+DRY_RUN=0
+TARGET_HOME="$HOME"
+LINK_TARGET="../.agents/skills"
+
+show_help() {
+  grep '^#/' <"$0" | cut -c4-
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --target)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "Error: --target requires a directory." >&2
+        exit 2
+      fi
+      TARGET_HOME="$1"
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Error: unknown option '$1'." >&2
+      show_help >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+CLAUDE_DIR="${TARGET_HOME%/}/.claude"
+LINK_PATH="${CLAUDE_DIR}/skills"
+
+# Um ~/.claude que virou symlink significa que o stow folded o pacote inteiro
+# para dentro do clone. Escrever ali criaria o link dentro do repositório, então
+# aborta em vez de sujar o worktree.
+if [ -L "$CLAUDE_DIR" ]; then
+  echo "Error: ${CLAUDE_DIR} is a symlink; re-run Stow with --no-folding." >&2
+  exit 1
+fi
+
+if [ -e "$LINK_PATH" ] && [ ! -L "$LINK_PATH" ]; then
+  echo "warning: ${LINK_PATH} exists and is not a symlink; leaving it alone." >&2
+  exit 0
+fi
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "dry-run: would link ${LINK_PATH} -> ${LINK_TARGET}"
+  exit 0
+fi
+
+mkdir -p "$CLAUDE_DIR"
+ln -snf "$LINK_TARGET" "$LINK_PATH"
+echo "Claude skills linked: ${LINK_PATH} -> ${LINK_TARGET}"

@@ -1,13 +1,7 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(for lib in \"Bootstrap\" \"jQuery\" \"DataTables\" \"ApexCharts\" \"Chart.js\" \"Quill\" \"SmartWizard\" \"Validation\" \"Tempus\" \"lucide\" \"bootbox\" \"moment\" \"daterangepicker\" \"svg.js\" \"FileSaver\" \"inputmask\" \"cleave\" \"imask\")",
-      "Bash(do echo -n \"$lib: \")",
-      "Bash(done)"
-    ],
     "defaultMode": "acceptEdits"
   },
-  "model": "Fable",
   "statusLine": {
     "type": "command",
     "command": "bash \"$HOME/.claude/statusline-command.sh\""

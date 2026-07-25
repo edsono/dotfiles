@@ -10,7 +10,11 @@ SKIP_ZSH_INSTALL=0
 SKIP_MODERN_UNIX_INSTALL=0
 SET_DEFAULT_SHELL=0
 PACKAGES=(zsh tmux git bin vim nvim codex ghostty lazygit claude bat)
-CODEX_PACKAGE="codex"
+# Pacotes que precisam de --no-folding. Sem isso o stow substitui o diretório
+# inteiro por um symlink quando ele ainda não existe no destino, e o runtime do
+# Codex/Claude Code passa a gravar estado local dentro do clone do repositório.
+NOFOLD_PACKAGES=(codex claude)
+# Aplicado junto ao grupo acima; casa apenas com caminhos do pacote codex.
 CODEX_IGNORE_REGEX='^\.codex/skills/\.system(/|$)'
 NERD_FONTS_JETBRAINS_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
 
@@ -35,23 +39,39 @@ Options:
 USAGE
 }
 
-collect_stow_conflict_targets() {
-  local stow_output=""
-  local non_codex_packages=()
+is_nofold_package() {
+  local candidate="$1"
   local package_name=""
 
-  for package_name in "${PACKAGES[@]}"; do
-    if [ "$package_name" = "$CODEX_PACKAGE" ]; then
-      continue
-    fi
-    non_codex_packages+=("$package_name")
+  for package_name in "${NOFOLD_PACKAGES[@]}"; do
+    [ "$package_name" = "$candidate" ] && return 0
   done
+  return 1
+}
 
+split_packages() {
+  local package_name=""
+
+  folding_packages=()
+  nofolding_packages=()
+  for package_name in "${PACKAGES[@]}"; do
+    if is_nofold_package "$package_name"; then
+      nofolding_packages+=("$package_name")
+    else
+      folding_packages+=("$package_name")
+    fi
+  done
+}
+
+collect_stow_conflict_targets() {
+  local stow_output=""
+
+  split_packages
   stow_output="$(
     {
-      stow -n -v -t "$TARGET" "${non_codex_packages[@]}"
+      stow -n -v -t "$TARGET" "${folding_packages[@]}"
       stow -n -v --no-folding --ignore="$CODEX_IGNORE_REGEX" \
-        -t "$TARGET" "$CODEX_PACKAGE"
+        -t "$TARGET" "${nofolding_packages[@]}"
     } 2>&1 || true
   )"
 
@@ -304,19 +324,6 @@ ensure_jetbrains_nerd_font() {
   fi
 }
 
-ensure_claude_skills_link() {
-  local claude_dir="${TARGET%/}/.claude"
-  local link_path="${claude_dir}/skills"
-
-  mkdir -p "$claude_dir"
-  if [ -e "$link_path" ] && [ ! -L "$link_path" ]; then
-    echo "warning: ${link_path} exists and is not a symlink; leaving it alone." >&2
-    return 0
-  fi
-  ln -snf "../.agents/skills" "$link_path"
-  echo "Claude skills linked: ${link_path} -> ../.agents/skills"
-}
-
 verify_codex_skills_sync() {
   local skills_dir=""
   local skills_count=0
@@ -434,27 +441,22 @@ if [ "$MODE" = "delete" ]; then
   STOW_FLAGS=(-D "${STOW_FLAGS[@]}")
 fi
 
-non_codex_packages=()
-for package_name in "${PACKAGES[@]}"; do
-  if [ "$package_name" = "$CODEX_PACKAGE" ]; then
-    continue
-  fi
-  non_codex_packages+=("$package_name")
-done
+split_packages
 
-stow "${STOW_FLAGS[@]}" "${non_codex_packages[@]}"
+stow "${STOW_FLAGS[@]}" "${folding_packages[@]}"
 stow --no-folding --ignore="$CODEX_IGNORE_REGEX" \
-  "${STOW_FLAGS[@]}" "$CODEX_PACKAGE"
+  "${STOW_FLAGS[@]}" "${nofolding_packages[@]}"
 
 if [ "$MODE" = "install" ]; then
   if [ "$DRY_RUN" -eq 1 ]; then
     "${SCRIPT_DIR}/bin/bin/config-codex" --target "$TARGET" --dry-run
+    "${SCRIPT_DIR}/bin/bin/config-claude-skills" --target "$TARGET" --dry-run
   else
     "${SCRIPT_DIR}/bin/bin/config-codex" --target "$TARGET"
     if command -v bat >/dev/null 2>&1; then
       bat cache --build
     fi
-    ensure_claude_skills_link
+    "${SCRIPT_DIR}/bin/bin/config-claude-skills" --target "$TARGET"
     verify_codex_skills_sync
   fi
 fi
