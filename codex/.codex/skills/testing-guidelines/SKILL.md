@@ -1,11 +1,11 @@
 ---
 name: testing-guidelines
-description: "Diretrizes de testes para o projeto fakgo (Go). Quatro camadas obrigatórias: unitário (service+inmemdb), handler (inmemdb+renderSpy), integração (handler+banco real), smoke (templates+startup). Quinta camada opcional: circuito (router completo + banco real, vários serviços). Use ao planejar ou escrever testes neste projeto."
+description: "Diretrizes de testes para o projeto fakgo (Go). Quatro camadas obrigatórias: unitário (service+inmemdb), handler (inmemdb+renderSpy), integração (handler+banco real), smoke (templates+startup). Quinta camada opcional: circuito (router completo + banco real, vários serviços). Sexta camada opcional: teste de sistema (jornada longa multi-ator). Use ao planejar ou escrever testes neste projeto."
 ---
 
 # Diretrizes de Testes — fakgo
 
-## As quatro camadas base + circuito
+## As quatro camadas base + circuito + teste de sistema
 
 | Camada | Build tag | Localização | O que verifica |
 |---|---|---|---|
@@ -14,6 +14,7 @@ description: "Diretrizes de testes para o projeto fakgo (Go). Quatro camadas obr
 | **Integração** | `integration` | `internal/handler/<módulo>/<feature>_integration_test.go` | Caminho feliz de uma tela exercitado contra o banco de teste real |
 | **Smoke** | — | `internal/server/*_test.go` | Compilação e execução sem pânico: templates + wiring da aplicação |
 | **Circuito** | `integration` | `internal/handler/<módulo>/<feature>_circuito_integration_test.go` | Fluxo de negócio ponta-a-ponta atravessando vários serviços pelo router completo + middlewares |
+| **Teste de sistema** | `integration` | `internal/handler/<módulo>/<feature>_sistema_integration_test.go` | Jornada de negócio longa, multi-ator/perfil, ponta-a-ponta pelo router completo + middlewares |
 
 ---
 
@@ -198,17 +199,21 @@ func TestStartupRotasRegistradasSemBanco(t *testing.T) {
 
 ## Camada 5 — Circuito (router completo + banco real + vários serviços)
 
-Convenção: **1 a 3 circuitos por módulo**, cada um exercitando um fluxo de
-negócio que atravessa vários serviços pela pilha HTTP completa
-(Flash → CSRF → AuthMiddleware → Autorizacao → Recovery → Logging → RequestID).
+Convenção: sem limite numérico rígido de circuitos por módulo, cada um
+exercitando um fluxo de negócio que atravessa vários serviços pela pilha HTTP
+completa (Flash → CSRF → AuthMiddleware → Autorizacao → Recovery → Logging →
+RequestID).
 
 **Quando usar:** quando um caminho de negócio relevante só pode ser validado
 passando por mais de um serviço ou quando o middleware de Autorizacao é parte
-crítica do que está sendo testado.
+crítica do que está sendo testado. Critério de classificação obrigatório:
+circuito é fluxo curto com 1 (ou poucos) atores. Quando o fluxo exige
+múltiplos perfis/atores distintos ou vira uma jornada multi-fase, escreva-o
+como teste de sistema (camada 6), não como circuito.
 
 Build tag obrigatória: `//go:build integration` (igual à camada 3).
 Nomenclatura do arquivo: `<feature>_circuito_integration_test.go`.
-Nomenclatura do teste: `TestCircuito<Fluxo>` ex: `TestCircuitoCadastrarEDesignarDiretor`.
+Nomenclatura do teste: `TestCircuito{N}Integracao{DescricaoCamelCase}` ex: `TestCircuito1IntegracaoCadastrarEListar`.
 
 ### Wiring — `testserver.Harness`
 
@@ -293,10 +298,48 @@ func TestCircuitoCadastrarEAcompanhar(t *testing.T) {
 
 ---
 
+## Camada 6 — Teste de sistema (jornada longa + vários atores)
+
+Camada acima do circuito: exercita uma jornada de negócio longa, ponta a ponta, com **vários
+atores/perfis**, sempre black-box pela pilha HTTP completa (`testserver.Harness`) contra banco
+real. A fonte detalhada de regras, convenções e exemplos é `docs/testes-integracao.md` — este
+resumo cobre apenas o essencial para reconhecer quando usar.
+
+### Circuito x teste de sistema
+
+| Aspecto | Circuito | Teste de sistema |
+|---|---|---|
+| Escopo | 1 fluxo, poucos serviços | Jornada completa, multi-fase |
+| Atores | Geralmente 1 (ou poucos) | Vários perfis distintos |
+| Duração do fluxo | Curto | Longo |
+| Quantidade por módulo | Sem limite numérico rígido | 1 a 2 |
+
+Use teste de sistema quando o comportamento a validar depende da interação entre múltiplos
+perfis ao longo de várias etapas — por exemplo, checar que cada perfil só pode executar as
+ações que lhe cabem ao longo de um processo inteiro.
+
+### Nomenclatura
+
+- Teste: `TestSistema{DescricaoCamelCase}`
+- Arquivo: `{modulo}_sistema_integration_test.go`
+- Build tag obrigatória: `//go:build integration`
+
+O nome do teste carrega o tipo (unidade/integração/sistema); `Integracao` no nome fica
+reservado às camadas 3 e 5 (`TestIntegracao*`, `TestCircuito{N}Integracao*`).
+
+Exemplos de referência: `internal/handler/eleicoes/eleicao_sistema_integration_test.go`
+(`TestSistemaFluxoCompletoEleicao` e
+`TestSistemaSimulacaoProcessoEleitoral`) e
+`internal/handler/cadastros/trabalhador_sistema_integration_test.go`
+(`TestSistemaCicloVidaTrabalhadorPorPerfis`).
+
+---
+
 ## Execução
 
 ```bash
-just test                           # camadas 1, 2 e 4 (smoke agora em internal/server)
-just test-integration               # camadas 3 e 5 (requer DB_* ou FAKGO_TEST_DSN)
+just test                           # desenvolvimento — camadas 1, 2 e 4 (smoke agora em internal/server)
+just test-integration               # reforço pós-feature — camadas 3 e 5 (requer DB_* ou FAKGO_TEST_DSN)
+just test-sistema                   # última proteção antes do deploy — camada 6 (requer DB_* ou FAKGO_TEST_DSN)
 just test-all                       # todas as camadas
 ```
