@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+#/ Usage: check-ddns [hostname]
+#/ Check whether public and system DNS resolvers agree on a hostname's IPv4 address.
+set -euo pipefail
+
+show_help() {
+	grep '^#/' <"$0" | cut -c4-
+}
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+	show_help
+	exit 0
+fi
+
+if ! command -v dig >/dev/null 2>&1; then
+	echo "Error: dig is required." >&2
+	exit 2
+fi
+
+hostname="${1:-edsono.tplinkdns.com}"
+reference_ip=""
+all_agree=true
+
+resolvers=(
+	"Cloudflare|1.1.1.1"
+	"Google|8.8.8.8"
+	"Quad9|9.9.9.9"
+	"OpenDNS|208.67.222.222"
+	"AdGuard|94.140.14.14"
+	"ControlD|76.76.2.0"
+	"System|system"
+)
+
+printf 'Hostname: %s\n\n' "$hostname"
+printf '%-12s %-16s %-10s %s\n' "Resolver" "Server" "Status" "IPv4"
+
+for resolver in "${resolvers[@]}"; do
+	IFS='|' read -r label server <<<"$resolver"
+	if [ "$server" = "system" ]; then
+		output=$(dig +time=3 +tries=1 "$hostname" A +noall +comments +answer 2>&1 || true)
+	else
+		output=$(dig "@$server" +time=3 +tries=1 "$hostname" A +noall +comments +answer 2>&1 || true)
+	fi
+
+	dns_status=$(sed -n 's/.*status: \([^,]*\).*/\1/p' <<<"$output" | head -1)
+	ipv4=$(awk '$4 == "A" { print $5 }' <<<"$output" | sort -u | paste -sd, -)
+
+	dns_status="${dns_status:-ERROR}"
+	ipv4="${ipv4:-NONE}"
+	printf '%-12s %-16s %-10s %s\n' "$label" "$server" "$dns_status" "$ipv4"
+
+	if [ "$dns_status" != "NOERROR" ] || [ "$ipv4" = "NONE" ]; then
+		all_agree=false
+	elif [ -z "$reference_ip" ]; then
+		reference_ip="$ipv4"
+	elif [ "$ipv4" != "$reference_ip" ]; then
+		all_agree=false
+	fi
+done
+
+printf '\n'
+if $all_agree && [ -n "$reference_ip" ]; then
+	printf 'OK: all resolvers agree on %s.\n' "$reference_ip"
+	exit 0
+fi
+
+echo "WAIT: the hostname is not consistently resolved yet."
+exit 1
