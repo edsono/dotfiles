@@ -28,7 +28,7 @@ show_prompt() {
   local blue="$5"
 
   printf '%-13s %-7s  ' "$role" "$hex"
-  printf '\033[1;38;2;%s;%s;%sm󰌘 kinghost %s' \
+  printf '\033[1;38;2;%s;%s;%sm󰌘 locaweb %s' \
     "$red" "$green" "$blue" "$reset"
   printf '\033[1;38;2;158;205;197mdotfiles/system/ssh-banner%s ' "$reset"
   printf '\033[3;38;2;158;205;197m main%s ' "$reset"
@@ -43,7 +43,7 @@ show_color "Distribuição" "#00D7FF" 0 215 255 "AlmaLinux 9.8"
 show_color "Rótulos" "#00AFFF" 0 175 255 "Kernel · Uptime · IP"
 show_color "Valores" "#EEEEEE" 238 238 238 "5.14.0 · 18h · 192.0.2.10"
 show_color "Auxiliares" "#8A8A8A" 138 138 138 "automação em 18h · sudo dnf upgrade"
-show_color "Prompt SSH" "#00D7FF" 0 215 255 "󰌘 kinghost"
+show_color "Prompt SSH" "#00D7FF" 0 215 255 "󰌘 locaweb"
 
 printf '\n%sO mesmo prompt completo com cada azul%s\n\n' "$bold" "$reset"
 show_prompt "Logo" "#0087FF" 0 135 255
