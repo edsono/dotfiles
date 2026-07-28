@@ -355,6 +355,14 @@ claude-sefaz() {
   command claude --model opusplan --effort medium --dangerously-skip-permissions --remote-control "$@"
 }
 
+claude-update() {
+  command claude update "$@"
+}
+
+claude-sefaz-update() {
+  CLAUDE_CONFIG_DIR="$HOME/.claude-sefaz" command claude update "$@"
+}
+
 #-------------
 # Modern Unix aliases (with fallback)
 #-------------
