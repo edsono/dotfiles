@@ -1,13 +1,15 @@
 {
   "permissions": {
-    "defaultMode": "acceptEdits"
+    "defaultMode": "auto"
   },
+  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "bash \"$HOME/.claude/statusline-command.sh\""
   },
   "enabledPlugins": {
-    "superpowers@superpowers-marketplace": true
+    "superpowers@superpowers-marketplace": true,
+    "revdiff@revdiff": true
   },
   "extraKnownMarketplaces": {
     "superpowers-marketplace": {
@@ -15,13 +17,19 @@
         "source": "github",
         "repo": "obra/superpowers-marketplace"
       }
+    },
+    "revdiff": {
+      "source": {
+        "source": "github",
+        "repo": "umputun/revdiff"
+      }
     }
   },
-  "effortLevel": "high",
+  "feedbackDrafts": "off",
+  "effortLevel": "xhigh",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "editorMode": "vim",
   "autoCompactEnabled": false,
-  "agentPushNotifEnabled": true,
-  "model": "Fable"
+  "agentPushNotifEnabled": true
 }

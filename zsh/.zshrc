@@ -346,13 +346,13 @@ codex() {
 
 claude() {
   CLAUDE_CODE_SUBAGENT_MODEL="claude-sonnet-5" \
-  command claude --model opusplan --effort medium --dangerously-skip-permissions --remote-control "$@"
+  command claude --model opus --effort medium --dangerously-skip-permissions --remote-control "$@"
 }
 
 claude-sefaz() {
   CLAUDE_CONFIG_DIR="$HOME/.claude-sefaz" \
   CLAUDE_CODE_SUBAGENT_MODEL="claude-sonnet-5" \
-  command claude --model opusplan --effort medium --dangerously-skip-permissions --remote-control "$@"
+  command claude --model opus --effort medium --dangerously-skip-permissions --remote-control "$@"
 }
 
 claude-update() {
@@ -447,3 +447,4 @@ if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init zsh)"
   alias cd='z'
 fi
+eval "$(mise activate zsh)"
