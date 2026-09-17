@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+#/ Usage: config-skills [--target <home>] [--dry-run]
+#/ Publish the shared skills tree to ~/.agents/skills and point the Claude Code
+#/ and Codex skill directories at it, preserving local and external entries.
+set -euo pipefail
+
+DRY_RUN=0
+TARGET_HOME="$HOME"
+CLAUDE_LINK_TARGET="../.agents/skills"
+
+show_help() {
+  grep '^#/' <"$0" | cut -c4-
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --target)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "Error: --target requires a directory." >&2
+        exit 2
+      fi
+      TARGET_HOME="$1"
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Error: unknown option '$1'." >&2
+      show_help >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
+SOURCE_DIR="${REPO_ROOT}/agents/.agents/skills"
+
+AGENTS_DIR="${TARGET_HOME%/}/.agents"
+SHARED_DIR="${AGENTS_DIR}/skills"
+CLAUDE_DIR="${TARGET_HOME%/}/.claude"
+CLAUDE_LINK="${CLAUDE_DIR}/skills"
+CODEX_DIR="${TARGET_HOME%/}/.codex"
+CODEX_SKILLS_DIR="${CODEX_DIR}/skills"
+
+if [ ! -d "$SOURCE_DIR" ]; then
+  echo "Error: shared skills tree not found: ${SOURCE_DIR}" >&2
+  exit 1
+fi
+
+report() {
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "dry-run: $1"
+  else
+    echo "$1"
+  fi
+}
+
+# Um diretório-pai que virou symlink significa que o Stow folded o pacote
+# inteiro para dentro do clone. Escrever ali criaria links dentro do
+# repositório, então aborta em vez de sujar o worktree.
+require_real_dir() {
+  local path="$1"
+
+  if [ -L "$path" ]; then
+    echo "Error: ${path} is a symlink; re-run Stow with --no-folding." >&2
+    exit 1
+  fi
+  if [ -e "$path" ] && [ ! -d "$path" ]; then
+    echo "Error: ${path} exists and is not a directory." >&2
+    exit 1
+  fi
+}
+
+ensure_dir() {
+  local path="$1"
+
+  require_real_dir "$path"
+  if [ -d "$path" ]; then
+    return 0
+  fi
+  report "create directory ${path}"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    mkdir -p "$path"
+  fi
+}
+
+# Só gerencia entradas que já são symlinks para o prefixo esperado. Diretórios
+# reais (skills locais, estado como synced/) e links para fora do prefixo
+# (skills mantidas em outros repositórios) ficam intocados.
+link_skill() {
+  local source="$1"
+  local dest="$2"
+  local current=""
+
+  if [ -L "$dest" ]; then
+    current="$(readlink "$dest")"
+    if [ "$current" = "$source" ]; then
+      return 0
+    fi
+  elif [ -e "$dest" ]; then
+    echo "warning: ${dest} is not a symlink; leaving it alone." >&2
+    return 0
+  fi
+
+  report "link ${dest} -> ${source}"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    ln -snf "$source" "$dest"
+  fi
+}
+
+# Remove apenas links quebrados que este script criou, reconhecidos pelo alvo
+# absoluto sob o prefixo gerenciado. Qualquer outro link quebrado pertence ao
+# usuário e fica onde está.
+prune_stale_links() {
+  local dir="$1"
+  local prefix="$2"
+  local entry=""
+  local target=""
+
+  [ -d "$dir" ] || return 0
+  for entry in "$dir"/*; do
+    [ -L "$entry" ] || continue
+    [ -e "$entry" ] && continue
+    target="$(readlink "$entry")"
+    case "$target" in
+      "$prefix"/*) ;;
+      *) continue ;;
+    esac
+    report "remove stale link ${entry} -> ${target}"
+    if [ "$DRY_RUN" -eq 0 ]; then
+      rm -f "$entry"
+    fi
+  done
+}
+
+# Uma skill é um diretório com SKILL.md na raiz. O critério exclui estado do
+# sincronizador de skills (~/.agents/skills/synced) e diretórios auxiliares.
+is_skill_dir() {
+  [ -f "$1/SKILL.md" ]
+}
+
+publish_shared_tree() {
+  local skill_dir=""
+  local name=""
+
+  require_real_dir "$AGENTS_DIR"
+  ensure_dir "$SHARED_DIR"
+
+  for skill_dir in "$SOURCE_DIR"/*; do
+    is_skill_dir "$skill_dir" || continue
+    name="$(basename "$skill_dir")"
+    link_skill "$skill_dir" "${SHARED_DIR}/${name}"
+  done
+
+  prune_stale_links "$SHARED_DIR" "$SOURCE_DIR"
+}
+
+link_claude_skills() {
+  require_real_dir "$CLAUDE_DIR"
+
+  if [ -e "$CLAUDE_LINK" ] && [ ! -L "$CLAUDE_LINK" ]; then
+    echo "warning: ${CLAUDE_LINK} exists and is not a symlink; leaving it alone." >&2
+    return 0
+  fi
+
+  ensure_dir "$CLAUDE_DIR"
+  if [ -L "$CLAUDE_LINK" ] && [ "$(readlink "$CLAUDE_LINK")" = "$CLAUDE_LINK_TARGET" ]; then
+    return 0
+  fi
+
+  report "link ${CLAUDE_LINK} -> ${CLAUDE_LINK_TARGET}"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    ln -snf "$CLAUDE_LINK_TARGET" "$CLAUDE_LINK"
+  fi
+}
+
+# O Codex grava .system/ dentro de ~/.codex/skills, então o diretório não pode
+# virar um symlink: cada skill recebe um link próprio.
+link_codex_skills() {
+  local entry=""
+  local name=""
+
+  require_real_dir "$CODEX_DIR"
+  ensure_dir "$CODEX_SKILLS_DIR"
+
+  if [ ! -d "$SHARED_DIR" ]; then
+    return 0
+  fi
+
+  for entry in "$SHARED_DIR"/*; do
+    is_skill_dir "$entry" || continue
+    name="$(basename "$entry")"
+    link_skill "${SHARED_DIR}/${name}" "${CODEX_SKILLS_DIR}/${name}"
+  done
+
+  prune_stale_links "$CODEX_SKILLS_DIR" "$SHARED_DIR"
+}
+
+publish_shared_tree
+link_claude_skills
+link_codex_skills
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "dry-run: no changes were made."
+else
+  echo "Skills published: ${SHARED_DIR} (Claude Code and Codex linked)."
+fi

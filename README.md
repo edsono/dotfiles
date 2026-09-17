@@ -11,11 +11,11 @@ Gerenciamento de configurações pessoais com
 - `bin`
 - `vim`
 - `nvim`
-- `codex`
 - `ghostty`
 - `lazygit`
 - `claude`
 - `bat`
+- `agents` (skills compartilhadas; fora do Stow, publicado pelo `config-skills`)
 
 ## Requisitos
 
@@ -95,14 +95,17 @@ Definir `zsh` como shell padrão de login:
 
 ```bash
 stow -t ~ zsh tmux git bin vim nvim ghostty lazygit bat
-stow --no-folding --ignore='^\.codex/skills/\.system(/|$)' -t ~ codex claude
-config-claude-skills
+stow --no-folding -t ~ claude
+config-skills
 ```
 
-`codex` e `claude` exigem `--no-folding`. Sem essa flag o Stow substitui
-`~/.codex` e `~/.claude` inteiros por um symlink quando eles ainda não existem,
-e o estado de runtime dessas ferramentas (sessões, histórico, cache) passa a ser
-gravado dentro do clone do repositório.
+`claude` exige `--no-folding`. Sem essa flag o Stow substitui `~/.claude`
+inteiro por um symlink quando ele ainda não existe, e o estado de runtime da
+ferramenta (sessões, histórico, cache) passa a ser gravado dentro do clone do
+repositório.
+
+O pacote `agents` fica fora do Stow: as skills compartilhadas são publicadas
+pelo `config-skills`, com um symlink por skill.
 
 ## VPS com `ssh-vps`
 
@@ -163,7 +166,7 @@ Trocar os grupos sincronizados:
 bin/bin/ssh-vps --packages zsh,git,tmux,bin,vim,bat usuario@host
 ```
 
-O subset padrão é `zsh,git,tmux,bin,vim,bat,claude,codex`. O `dotfiles-deploy`
+O subset padrão é `zsh,git,tmux,bin,vim,bat,claude`. O `dotfiles-deploy`
 aplica os mesmos pacotes, então a configuração do Claude Code e as skills
 chegam aos servidores junto com o restante.
 
@@ -257,12 +260,6 @@ Exemplos de override para Ghostty:
 - `ghostty/Library/Application
   Support/com.mitchellh.ghostty/config.local.example`
 
-## Observação sobre Codex `.system`
-
-O diretório `codex/.codex/skills/.system` permanece versionado no repositório,
-mas a instalação via `install.sh` ignora esse caminho no `stow` para preservar
-o conteúdo local existente em `~/.codex/skills/.system`.
-
 ## Configuração do Codex
 
 A configuração compartilhada em `system/codex/config.toml` mantém a linha de
@@ -286,24 +283,43 @@ de `[tui]`, preserva as outras chaves e mantém um backup inicial em
 `~/.codex` aponta para dentro do clone são migradas para um diretório local
 antes da reconciliação.
 
-## Skills do Codex e do Claude Code
+## Skills compartilhadas entre Codex e Claude Code
 
-- Fonte de verdade única: `codex/.codex/skills` neste repositório. As entradas
-  em `codex/.agents/skills` são apenas symlinks relativos para lá — nunca
-  duplique o conteúdo entre as duas árvores.
-- `install.sh` sincroniza essas skills para `~/.codex/skills` e valida o
-  resultado.
-- `config-claude-skills` aponta `~/.claude/skills` para `~/.agents/skills`, de
-  onde o Claude Code lê as mesmas skills. O script aborta se `~/.claude` for um
-  symlink, sinal de que o Stow rodou sem `--no-folding`.
-- Hosts com o clone Git recebem as skills publicadas junto com o restante do
-  repositório.
-- O caminho `~/.codex/skills/.system` local é preservado por padrão.
+- Fonte de verdade única: `agents/.agents/skills` neste repositório. Uma skill
+  existe em um único caminho versionado — não há árvore-espelho para manter.
+- `config-skills` publica essas skills e liga as duas ferramentas a elas:
+
+```text
+~/.agents/skills/<skill>  -> <clone>/agents/.agents/skills/<skill>
+~/.claude/skills          -> ../.agents/skills
+~/.codex/skills/<skill>   -> ~/.agents/skills/<skill>
+```
+
+- O pacote `agents` **não** passa pelo Stow. `~/.agents/skills` e
+  `~/.codex/skills` precisam continuar sendo diretórios reais, porque hospedam
+  estado local (`~/.agents/synced`, `~/.agents/.skill-lock.json`,
+  `~/.codex/skills/.system`) e skills mantidas fora do dotfiles. O script cria
+  um symlink por skill e remove apenas os links quebrados que ele mesmo criou.
+- Skills locais ou vindas de outros repositórios podem coexistir em
+  `~/.agents/skills`: diretórios reais e links para fora do clone nunca são
+  tocados, e são propagados para o Codex.
+- Adicionar uma skill nova: criar `agents/.agents/skills/<nome>/SKILL.md` e
+  rodar `config-skills`.
+- `install.sh`, `ssh-vps` e `dotfiles-deploy` chamam o `config-skills`, então
+  hosts com o clone Git recebem as mesmas skills.
+
+Aplicar ou inspecionar manualmente:
+
+```bash
+config-skills
+config-skills --dry-run
+```
 
 Verificação local:
 
 ```bash
-find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l
+find -L ~/.codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md \
+  -not -path '*/.system/*' | wc -l
 find -L ~/.claude/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l
 ```
 

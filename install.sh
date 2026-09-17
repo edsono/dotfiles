@@ -9,13 +9,13 @@ SKIP_FONT_INSTALL=0
 SKIP_ZSH_INSTALL=0
 SKIP_MODERN_UNIX_INSTALL=0
 SET_DEFAULT_SHELL=0
-PACKAGES=(zsh tmux git bin vim nvim codex ghostty lazygit claude bat)
+# As skills compartilhadas (pacote agents/) ficam fora do stow: quem as publica
+# é o config-skills, com um symlink por skill.
+PACKAGES=(zsh tmux git bin vim nvim ghostty lazygit claude bat)
 # Pacotes que precisam de --no-folding. Sem isso o stow substitui o diretório
 # inteiro por um symlink quando ele ainda não existe no destino, e o runtime do
-# Codex/Claude Code passa a gravar estado local dentro do clone do repositório.
-NOFOLD_PACKAGES=(codex claude)
-# Aplicado junto ao grupo acima; casa apenas com caminhos do pacote codex.
-CODEX_IGNORE_REGEX='^\.codex/skills/\.system(/|$)'
+# Claude Code passa a gravar estado local dentro do clone do repositório.
+NOFOLD_PACKAGES=(claude)
 NERD_FONTS_JETBRAINS_URL="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
 
 usage() {
@@ -70,8 +70,7 @@ collect_stow_conflict_targets() {
   stow_output="$(
     {
       stow -n -v -t "$TARGET" "${folding_packages[@]}"
-      stow -n -v --no-folding --ignore="$CODEX_IGNORE_REGEX" \
-        -t "$TARGET" "${nofolding_packages[@]}"
+      stow -n -v --no-folding -t "$TARGET" "${nofolding_packages[@]}"
     } 2>&1 || true
   )"
 
@@ -324,25 +323,31 @@ ensure_jetbrains_nerd_font() {
   fi
 }
 
-verify_codex_skills_sync() {
+count_skills() {
+  find -L "$1" -mindepth 2 -maxdepth 2 -name SKILL.md -not -path '*/.system/*' |
+    wc -l | tr -d '[:space:]'
+}
+
+verify_skills_sync() {
+  local label=""
   local skills_dir=""
   local skills_count=0
 
-  skills_dir="${TARGET%/}/.codex/skills"
-  if [ ! -d "${skills_dir}" ]; then
-    echo "error: codex skills directory missing after stow: ${skills_dir}" >&2
-    return 1
-  fi
+  for label in "Codex:.codex/skills" "Claude Code:.claude/skills"; do
+    skills_dir="${TARGET%/}/${label#*:}"
+    if [ ! -d "${skills_dir}" ]; then
+      echo "error: skills directory missing after config-skills: ${skills_dir}" >&2
+      return 1
+    fi
 
-  skills_count="$(
-    find -L "${skills_dir}" -mindepth 2 -maxdepth 2 -name SKILL.md -not -path '*/.system/*' | wc -l | tr -d '[:space:]'
-  )"
-  if [ "${skills_count}" -eq 0 ]; then
-    echo "error: no Codex skills found after stow in ${skills_dir}" >&2
-    return 1
-  fi
+    skills_count="$(count_skills "${skills_dir}")"
+    if [ "${skills_count}" -eq 0 ]; then
+      echo "error: no skills found in ${skills_dir}" >&2
+      return 1
+    fi
 
-  echo "Codex skills synced: ${skills_count} (excluding .system)."
+    echo "${label%%:*} skills synced: ${skills_count} (excluding .system)."
+  done
 }
 
 while [ "$#" -gt 0 ]; do
@@ -444,19 +449,18 @@ fi
 split_packages
 
 stow "${STOW_FLAGS[@]}" "${folding_packages[@]}"
-stow --no-folding --ignore="$CODEX_IGNORE_REGEX" \
-  "${STOW_FLAGS[@]}" "${nofolding_packages[@]}"
+stow --no-folding "${STOW_FLAGS[@]}" "${nofolding_packages[@]}"
 
 if [ "$MODE" = "install" ]; then
   if [ "$DRY_RUN" -eq 1 ]; then
     "${SCRIPT_DIR}/bin/bin/config-codex" --target "$TARGET" --dry-run
-    "${SCRIPT_DIR}/bin/bin/config-claude-skills" --target "$TARGET" --dry-run
+    "${SCRIPT_DIR}/bin/bin/config-skills" --target "$TARGET" --dry-run
   else
     "${SCRIPT_DIR}/bin/bin/config-codex" --target "$TARGET"
     if command -v bat >/dev/null 2>&1; then
       bat cache --build
     fi
-    "${SCRIPT_DIR}/bin/bin/config-claude-skills" --target "$TARGET"
-    verify_codex_skills_sync
+    "${SCRIPT_DIR}/bin/bin/config-skills" --target "$TARGET"
+    verify_skills_sync
   fi
 fi
